@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>N-Body Problem — Orbital Mechanics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/base.css">
+  <link rel="stylesheet" href="../../css/layout.css">
+  <link rel="stylesheet" href="../../css/components.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+  <style>
+    .sim-canvas-wrap { cursor: grab; background: var(--bg-primary) url('../../assets/backgrounds/space-bg.jpg') center center / cover no-repeat; }
+    .sim-canvas-wrap:active { cursor: grabbing; }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+    .toggle-row label {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    .toggle-switch {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      background: var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .toggle-switch.active {
+      background: var(--accent);
+    }
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--bg-primary);
+      transition: transform 0.2s;
+    }
+    .toggle-switch.active::after {
+      transform: translateX(16px);
+    }
+  </style>
+</head>
+<body class="sim-page-body">
+    <header class="sim-header">
+      <a href="info.html" class="back-link">← Info</a>
+      <a href="../../index.html" class="back-link">← Catalog</a>
+      <span class="sim-header-title">N-Body Problem</span>
+    </header>
+
+  <div class="sim-main">
+    <div class="sim-controls"></div>
+    <div class="sim-center">
+      <div class="sim-canvas-wrap">
+        <canvas id="simCanvas"></canvas>
+        <div id="bodyInfoPanel" style="position:absolute;top:12px;right:12px;background:rgba(10,10,20,0.85);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 18px;font-size:0.9rem;color:var(--text-secondary);display:none;line-height:1.6;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);max-width:500px;z-index:5;"></div>
+      </div>
+      <div class="sim-data-bar">
+        <div class="data-group"><span class="data-label">Time</span><span class="data-value" id="dTime">0.00 s</span></div>
+        <div id="bodyDataContainer" style="display:flex;flex:1 0 0;min-width:0;align-items:center;gap:8px;"></div>
+        <div class="data-group"><span class="data-label">Energy</span><span class="data-value energy" id="dEnergy">0 J</span></div>
+        <div class="data-group"><span class="data-label">Ang. Mom.</span><span class="data-value accent" id="dAngMom">0</span></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>

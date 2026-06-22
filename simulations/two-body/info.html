@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Three-Body Problem — Orbital Mechanics Simulations</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/base.css">
+  <link rel="stylesheet" href="../../css/layout.css">
+  <link rel="stylesheet" href="../../css/components.css">
+    .info-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+    .info-header .back-link {
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="stars"></div>
+
+  <div class="info-page">
+    <div class="info-header">
+      <a href="../../index.html" class="back-link">← Back to Catalog</a>
+    </div>
+
+    <div class="preview-wrap" id="previewCanvasWrap">
+      <canvas id="previewCanvas"></canvas>
+    </div>
+
+    <h1>⭐ Three-Body Problem</h1>
+    <p class="info-subtitle">Simulate the chaotic gravitational interactions of three celestial bodies.</p>
+
+    <h2>Overview</h2>
+    <p>
+      The three-body problem describes the motion of three point masses under their mutual gravitational attraction. 
+      Unlike the two-body problem, which has a closed-form analytic solution (Kepler's laws), the general three-body 
+      problem has no known analytic solution — it is inherently <strong>chaotic</strong>. Small changes in initial 
+      conditions lead to dramatically different outcomes.
+    </p>
+    <p>
+      This simulation solves the equations of motion numerically using a 4th-order Runge-Kutta integrator (RK4), 
+      which provides excellent accuracy for short to medium time scales.
+    </p>
+
+    <h2>Learning Objectives</h2>
+    <ul>
+      <li>Observe chaotic orbital dynamics and sensitivity to initial conditions</li>
+      <li>Explore how mass ratios affect system behavior and stability</li>
+      <li>Visualize the center of mass and conservation of angular momentum</li>
+      <li>Discover special solutions like the Figure-8 orbit</li>
+      <li>Understand the difference between integrable (2-body) and non-integrable (3-body) systems</li>
+    </ul>
+
+    <h2>Controls</h2>
+    <ul>
+      <li><kbd>Space</kbd> — Play / Pause</li>
+      <li><kbd>R</kbd> — Reset simulation</li>
+      <li><kbd>S</kbd> — Step one frame</li>
+      <li><kbd>F</kbd> — Zoom to fit</li>
+      <li><kbd>+</kbd> / <kbd>-</kbd> — Zoom in / out</li>
+      <li><strong>Drag</strong> any body to reposition it</li>
+      <li><strong>Scroll</strong> to zoom in/out on the canvas</li>
+    </ul>
+
+    <h2>Key Features</h2>
+    <ul>
+      <li>Click any body to select it — the camera follows and its position/velocity vectors are displayed</li>
+      <li>Right-click the canvas to add new bodies with zero initial velocity</li>
+      <li>Drag any body to reposition it while paused</li>
+      <li>Adjust individual masses with per-body sliders</li>
+    </ul>
+
+    <div class="start-btn-wrap">
+      <a href="index.html" class="start-btn">▶ Start Simulation</a>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-links">
+        <a href="../../index.html" class="footer-link">Back to Catalog</a>
+        <a href="https://github.com" target="_blank" class="footer-link">GitHub</a>
+      </div>
+      <p class="footer-text">All computation runs client-side</p>
+    </div>
+  </footer>
+
+  <script type="module">
+    // Simple preview animation on the info page
+    import { PhysicsEngine } from '../../js/core/physics-engine.js';
+    import { StateManager } from '../../js/core/state-manager.js';
+    import { CanvasRenderer } from '../../js/renderer/canvas-renderer.js';
+    import { vec } from '../../js/core/math-utils.js';
+
+    const canvas = document.getElementById('previewCanvas');
+    if (canvas) {
+      // Make canvas fill its container
+      const wrap = document.getElementById('previewCanvasWrap');
+      canvas.width = wrap.clientWidth;
+      canvas.height = wrap.clientHeight;
+
+      const state = new StateManager();
+      // Inline three-body triangle preset
+      const mass = 100;
+      const s = 1000 / 1000;
+      const h = s * Math.sqrt(3) / 2;
+      state.addBody('Alpha', mass, vec(0, (2/3) * h, 0), vec(0, 0, 0), '#ff4444');
+      state.addBody('Beta',  mass, vec(-s / 2, -(1/3) * h, 0), vec(0, 0, 0), '#44ff88');
+      state.addBody('Gamma', mass, vec(s / 2, -(1/3) * h, 0), vec(0, 0, 0), '#4488ff');
+
+      const renderer = new CanvasRenderer(canvas);
+      renderer.zoomToFit(state.bodies);
+      renderer.showGrid = false;
+      renderer.showCom = true;
+
+      const physics = new PhysicsEngine();
+      const G = 60;
+
+      function animate() {
+        // Run a few physics steps each frame
+        for (let i = 0; i < 5; i++) {
+          physics.integrateRK4(state.bodies, G, 0.005);
+          state.time += 0.005;
+          state.recordState();
+        }
+
+        const com = physics.computeCenterOfMass(state.bodies);
+        renderer.render(state.bodies, state.history, com);
+        requestAnimationFrame(animate);
+      }
+
+      animate();
+    }
+  </script>
+</body>
+</html>

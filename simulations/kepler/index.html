@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kepler's Orbits — Orbital Mechanics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/base.css">
+  <link rel="stylesheet" href="../../css/layout.css">
+  <link rel="stylesheet" href="../../css/components.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+  <style>
+    .sim-canvas-wrap { cursor: grab; background: var(--bg-primary) url('../../assets/backgrounds/space-bg.jpg') center center / cover no-repeat; }
+    .sim-canvas-wrap:active { cursor: grabbing; }
+    
+    .sim-right-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 260px;
+      min-width: 100px;
+      max-width: 80vw;
+      flex-shrink: 0;
+      position: relative;
+      user-select: none;
+    }
+    
+    /* Drag handle on the left edge of the right panel */
+    .ueff-resize-handle {
+      position: absolute;
+      left: -4px;
+      top: 0;
+      bottom: 0;
+      width: 8px;
+      cursor: col-resize;
+      z-index: 20;
+    }
+    .ueff-resize-handle::after {
+      content: '';
+      position: absolute;
+      left: 3px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 2px;
+      height: 30px;
+      background: var(--border);
+      border-radius: 1px;
+    }
+    .ueff-resize-handle:hover::after {
+      background: var(--accent);
+    }
+    
+    .ueff-canvas-wrap {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .ueff-canvas-wrap canvas {
+      display: block;
+      width: 100%;
+      flex: 1;
+      min-height: 120px;
+    }
+    .ueff-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      padding: 6px 10px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body class="sim-page-body">
+  <header class="sim-header">
+    <a href="info.html" class="back-link">← Info</a>
+    <a href="../../index.html" class="back-link">← Catalog</a>
+    <span class="sim-header-title">Kepler's Orbits</span>
+  </header>
+
+  <div class="sim-main">
+    <div class="sim-controls"></div>
+    <div class="sim-center">
+      <div class="sim-canvas-wrap"><canvas id="simCanvas"></canvas></div>
+      <div class="sim-data-bar">
+        <div class="data-group"><span class="data-label">Time</span><span class="data-value" id="dTime">0.0 s</span></div>
+        <div class="data-group"><span class="data-label">Position</span><span class="data-value" id="dPos">(12000, 0)</span></div>
+        <div class="data-group"><span class="data-label">Velocity</span><span class="data-value" id="dVel">0.0000 km/s</span></div>
+        <div class="data-group"><span class="data-label">Eccentricity</span><span class="data-value ecc" id="dEcc">0.3000</span></div>
+        <div class="data-group"><span class="data-label">Specific Energy</span><span class="data-value energy" id="dEnergy">0.00 km²/s²</span></div>
+        <div class="data-group"><span class="data-label">Semi-major Axis</span><span class="data-value" id="dSma">0.0 km</span></div>
+      </div>
+    </div>
+
+    <div class="sim-right-panel">
+      <div class="ueff-resize-handle"></div>
+      <div class="ueff-canvas-wrap">
+        <div class="ueff-title">Effective Potential U<sub>eff</sub>(r)</div>
+        <canvas id="ueffCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>

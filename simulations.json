@@ -1,0 +1,22 @@
+{
+  "simulations": [
+    {
+      "id": "two-body",
+      "title": "Two-Body Problem",
+      "description": "Simulate the chaotic gravitational interactions of two celestial bodies. Drag to reposition, adjust masses, and watch complex orbital patterns emerge.",
+      "path": "simulations/two-body/"
+    },
+    {
+      "id": "three-body-ueff",
+      "title": "Three-Body Effective Potential",
+      "description": "Compute instantaneous gravitational potential energy for each body and display the per-body U_eff graph every tick.",
+      "path": "simulations/three-body-ueff/"
+    },
+    {
+      "id": "kepler",
+      "title": "Kepler's Orbits",
+      "description": "Explore elliptical, parabolic, and hyperbolic orbits around a central mass. Adjust eccentricity and see how orbital shapes change in real-time.",
+      "path": "simulations/kepler/"
+    }
+  ]
+}

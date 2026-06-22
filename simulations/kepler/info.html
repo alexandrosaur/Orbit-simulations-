@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kepler's Orbits — Orbital Mechanics Simulations</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/base.css">
+  <link rel="stylesheet" href="../../css/layout.css">
+  <link rel="stylesheet" href="../../css/components.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+  <style>
+    .info-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="stars"></div>
+
+  <div class="info-page">
+    <div class="info-header">
+      <a href="../../index.html" class="back-link">← Back to Catalog</a>
+    </div>
+
+    <div class="preview-wrap" style="font-size:4rem;display:flex;align-items:center;justify-content:center;">
+      🌍
+    </div>
+
+    <h1>🌍 Kepler's Orbits</h1>
+    <p class="info-subtitle">Explore elliptical, parabolic, and hyperbolic orbits around a central mass.</p>
+
+    <h2>Overview</h2>
+    <p>
+      Kepler's laws of planetary motion describe how objects orbit under gravity. This simulation uses
+      the <strong>universal variable formulation</strong> of Kepler's equation — a single analytic method
+      that works for <strong>elliptical</strong> (e < 1), <strong>parabolic</strong> (e = 1), and 
+      <strong>hyperbolic</strong> (e > 1) orbits without needing to switch between methods.
+    </p>
+    <p>
+      The initial velocity is set via the <strong>vis-viva equation</strong>:
+      \(|v_0| = \sqrt{\mu (1 + e) / r_0}\), applied tangentially to the position vector.
+      This means you control the orbit shape purely through the eccentricity parameter.
+    </p>
+
+    <h2>Learning Objectives</h2>
+    <ul>
+      <li>Understand how eccentricity determines orbit shape (circular → elliptical → parabolic → hyperbolic)</li>
+      <li>Explore the relationship between velocity, distance, and orbital energy (vis-viva)</li>
+      <li>Compare center-of-mass vs. perifocal reference frames</li>
+      <li>Observe conservation of specific energy and angular momentum</li>
+      <li>Identify periapsis, apoapsis, and semi-major axis on live orbits</li>
+    </ul>
+
+    <h2>Controls</h2>
+    <ul>
+      <li><kbd>Space</kbd> — Play / Pause</li>
+      <li><kbd>R</kbd> — Reset simulation</li>
+      <li><kbd>S</kbd> — Step one frame</li>
+      <li><kbd>F</kbd> — Zoom to fit</li>
+      <li><strong>Scroll</strong> to zoom on the canvas</li>
+      <li><strong>Drag</strong> on canvas to pan</li>
+      <li><strong>Eccentricity slider</strong> has non-linear mapping for fine control at low eccentricities</li>
+    </ul>
+
+    <h2>Features</h2>
+    <ul>
+      <li>Adjustable masses, gravitational constant, and time step</li>
+      <li>Two reference frames: Center-of-mass and Perifocal</li>
+      <li>Real-time data: eccentricity, specific energy, semi-major axis</li>
+      <li>Orbital trails with history (up to 10,000 points)</li>
+      <li>Auto-scaling viewport that fits the full orbit</li>
+    </ul>
+
+    <div class="start-btn-wrap">
+      <a href="index.html" class="start-btn">▶ Start Simulation</a>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-links">
+        <a href="../../index.html" class="footer-link">Back to Catalog</a>
+        <a href="https://github.com" target="_blank" class="footer-link">GitHub</a>
+      </div>
+      <p class="footer-text">All computation runs client-side</p>
+    </div>
+  </footer>
+</body>
+</html>

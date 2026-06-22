@@ -1,0 +1,239 @@
+/* ================================================================
+   components.css — Reusable UI: buttons, sliders, inputs, cards
+   ================================================================ */
+
+/* ================================================================
+   Buttons
+   ================================================================ */
+.launch-btn {
+  padding: 8px 20px;
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-family: var(--font);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  text-decoration: none;
+  display: inline-block;
+}
+
+.launch-btn:hover {
+  background: var(--accent);
+  color: var(--bg-primary);
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+}
+
+.start-btn {
+  display: inline-block;
+  padding: 14px 40px;
+  background: var(--accent);
+  color: var(--bg-primary);
+  font-family: var(--font);
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all var(--transition);
+}
+
+.start-btn:hover {
+  box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
+  transform: scale(1.03);
+}
+
+.start-btn-wrap {
+  text-align: center;
+  margin-top: 40px;
+}
+
+.btn-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sim-btn {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  flex: 1;
+  min-width: 60px;
+  text-align: center;
+}
+
+.sim-btn:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+
+.sim-btn.active {
+  background: var(--accent);
+  color: var(--bg-primary);
+  border-color: var(--accent);
+}
+
+.sim-btn.danger:hover {
+  background: rgba(255, 68, 68, 0.15);
+  border-color: #ff4444;
+  color: #ff4444;
+}
+
+.sim-btn.warn:hover {
+  background: rgba(255, 107, 53, 0.15);
+  border-color: var(--secondary);
+  color: var(--secondary);
+}
+
+/* ================================================================
+   Sliders
+   ================================================================ */
+.control-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.control-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.4);
+}
+
+.control-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+}
+
+.param-slider { flex: 1; }
+
+/* ================================================================
+   Parameter rows (slider + input combo)
+   ================================================================ */
+.param-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 1px;
+}
+
+.param-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.param-input {
+  width: 72px;
+  padding: 3px 6px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 0.82rem;
+}
+
+.param-val {
+  font-size: 0.82rem;
+  min-width: 36px;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* ================================================================
+   Control groups (in left sidebar)
+   ================================================================ */
+.sim-controls h3 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.control-group {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.control-group:last-child {
+  border-bottom: none;
+}
+
+.control-label {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+/* ================================================================
+   Preset badges
+   ================================================================ */
+.preset-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  background: var(--accent-dim);
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.preset-badge:hover { border-color: var(--accent); }
+
+/* ================================================================
+   COM marker (canvas overlay)
+   ================================================================ */
+.com-marker {
+  fill: none;
+  stroke: rgba(160, 160, 160, 0.5);
+  stroke-width: 1;
+}
+
+/* ================================================================
+   Data panel (legacy, kept for compatibility)
+   ================================================================ */
+.data-panel {
+  font-size: 0.8rem;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  line-height: 1.7;
+}
+
+.data-panel .data-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
+.data-panel .data-label { color: var(--text-muted); }
+.data-panel .data-value { color: var(--text-primary); font-weight: 500; }

@@ -1,0 +1,386 @@
+/* ================================================================
+   layout.css — Page structure: hero, container, grid, header, footer
+   ================================================================ */
+
+/* ================================================================
+   Hero
+   ================================================================ */
+.hero {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 60px 20px 30px;
+}
+
+.hero-content h1 {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  margin-top: 10px;
+  font-weight: 300;
+}
+
+/* ================================================================
+   Container
+   ================================================================ */
+.container {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px 60px;
+}
+
+/* ================================================================
+   Toolbar
+   ================================================================ */
+.toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.search-bar {
+  flex: 1;
+  min-width: 200px;
+  padding: 12px 18px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.search-bar::placeholder { color: var(--text-muted); }
+
+.search-bar:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+/* ================================================================
+   Simulation Card Grid (catalog)
+   ================================================================ */
+.sim-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.sim-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: transform var(--transition), box-shadow var(--transition);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.sim-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 212, 255, 0.1);
+}
+
+.sim-thumb {
+  width: 100%;
+  height: 180px;
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.sim-body { padding: 20px; }
+
+.sim-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.sim-desc {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sim-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* ================================================================
+   Footer
+   ================================================================ */
+.footer {
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid var(--border);
+  padding: 30px 20px;
+  margin-top: 40px;
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.footer-links { display: flex; gap: 20px; }
+
+.footer-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color var(--transition);
+}
+
+.footer-link:hover { color: var(--accent); }
+
+.footer-text {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* ================================================================
+   Simulation Page Layout
+   ================================================================ */
+.sim-page-body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sim-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.back-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color var(--transition);
+}
+
+.back-link:hover { color: var(--accent); }
+
+.sim-header-title {
+  font-size: 1rem;
+  font-weight: 600;
+  flex: 1;
+}
+
+.sim-main {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+/* Left sidebar */
+.sim-controls {
+  width: 280px;
+  min-width: 280px;
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  padding: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Center: canvas + data bar */
+.sim-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sim-canvas-wrap {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+.sim-canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Bottom data bar */
+.sim-data-bar {
+  flex-shrink: 0;
+  height: 100px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  font-size: 0.82rem;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.sim-data-bar .data-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: nowrap;
+  flex: 1 0 0;
+  min-width: 0;
+}
+
+.sim-data-bar .data-group .data-label {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sim-data-bar .data-group .data-value {
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.sim-data-bar .data-group .data-value.accent { color: var(--accent); }
+.sim-data-bar .data-group .data-value.energy { color: #44ff88; }
+.sim-data-bar .data-group .data-value.ecc { color: var(--secondary); }
+
+/* ================================================================
+   Info page
+   ================================================================ */
+.info-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.info-page h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.info-page .info-subtitle {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  margin-bottom: 32px;
+}
+
+.info-page h2 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-top: 32px;
+  margin-bottom: 12px;
+  color: var(--accent);
+}
+
+.info-page p {
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+
+.info-page ul {
+  list-style: none;
+  padding: 0;
+  margin-bottom: 24px;
+}
+
+.info-page ul li {
+  padding: 8px 0 8px 24px;
+  position: relative;
+  color: var(--text-secondary);
+}
+
+.info-page ul li::before {
+  content: '▸';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
+/* ================================================================
+   Previews
+   ================================================================ */
+.preview-wrap {
+  width: 100%;
+  height: 240px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius);
+  margin-bottom: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.preview-wrap canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* ================================================================
+   Responsive
+   ================================================================ */
+@media (max-width: 600px) {
+  .hero { padding: 40px 16px 20px; }
+  .sim-grid { grid-template-columns: 1fr; }
+  .toolbar { flex-direction: column; }
+  .footer-content { flex-direction: column; text-align: center; }
+}
+
+@media (max-width: 768px) {
+  .sim-main { flex-direction: column; }
+  .sim-controls {
+    width: 100%;
+    max-height: 35vh;
+    min-width: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .sim-data-bar {
+    height: 80px;
+    gap: 12px;
+    font-size: 0.75rem;
+  }
+}

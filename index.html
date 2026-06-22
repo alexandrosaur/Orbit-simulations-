@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orbital Mechanics Simulations</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+</head>
+<body>
+  <div class="stars"></div>
+  
+  <header class="hero">
+    <div class="hero-content">
+      <h1><span class="accent">Orbital</span> Mechanics</h1>
+      <p class="subtitle">Interactive physics simulations for learning orbital dynamics</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="toolbar">
+      <input type="text" id="search" class="search-bar" placeholder="Search simulations..." aria-label="Search simulations">
+    </div>
+    <div id="simGrid" class="sim-grid">
+      <!-- Cards loaded dynamically from simulations.json -->
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-links">
+        <a href="#" class="footer-link">About</a>
+        <a href="#" class="footer-link">GitHub</a>
+        <a href="#" class="footer-link">Documentation</a>
+      </div>
+      <p class="footer-text">All computation runs client-side</p>
+    </div>
+  </footer>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

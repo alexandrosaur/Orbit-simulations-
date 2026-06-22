@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Three-Body Effective Potential — Orbital Mechanics Simulations</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/base.css">
+  <link rel="stylesheet" href="../../css/layout.css">
+  <link rel="stylesheet" href="../../css/components.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌌</text></svg>">
+  <style>
+    .info-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+    .info-header .back-link { font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <div class="stars"></div>
+  <div class="info-page">
+    <div class="info-header">
+      <a href="../../index.html" class="back-link">← Back to Catalog</a>
+    </div>
+    <div class="preview-wrap" id="previewCanvasWrap">
+      <canvas id="previewCanvas"></canvas>
+    </div>
+    <h1>🌌 Three-Body Effective Potential</h1>
+    <p class="info-subtitle">Compute instantaneous gravitational potential energy per body and visualize U<sub>eff</sub> every tick.</p>
+    <h2>Overview</h2>
+    <p>This simulation uses a 3-body N-body engine with a separate live graph for the instantaneous effective potential of the selected body. Each body’s U<sub>eff</sub> is computed from the other two masses at the current positions.</p>
+    <h2>Learning Objectives</h2>
+    <ul>
+      <li>See how each body’s potential energy changes as the other bodies move</li>
+      <li>Track instantaneous U<sub>eff</sub> without affecting other simulations</li>
+      <li>Use the graph panel to compare bodies and observe energy behavior</li>
+      <li>Learn the difference between per-body potential energy and total system energy</li>
+    </ul>
+    <h2>Controls</h2>
+    <ul>
+      <li><kbd>Space</kbd> — Play / Pause</li>
+      <li><kbd>R</kbd> — Reset simulation</li>
+      <li><kbd>S</kbd> — Step one frame</li>
+      <li><kbd>F</kbd> — Zoom to fit</li>
+      <li><kbd>Right click</kbd> — Add a body</li>
+      <li><kbd>Drag</kbd> — Reposition a body</li>
+    </ul>
+    <div class="start-btn-wrap">
+      <a href="index.html" class="start-btn">▶ Start Simulation</a>
+    </div>
+  </div>
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-links">
+        <a href="../../index.html" class="footer-link">Back to Catalog</a>
+        <a href="https://github.com" target="_blank" class="footer-link">GitHub</a>
+      </div>
+      <p class="footer-text">All computation runs client-side</p>
+    </div>
+  </footer>
+    <script type="module">
+      import { PhysicsEngine } from '../../js/core/physics-engine.js';
+      import { StateManager } from '../../js/core/state-manager.js';
+      import { CanvasRenderer } from '../../js/renderer/canvas-renderer.js';
+      import { vec } from '../../js/core/math-utils.js';
+
+      const canvas = document.getElementById('previewCanvas');
+      if (canvas) {
+        const wrap = document.getElementById('previewCanvasWrap');
+        canvas.width = wrap.clientWidth;
+        canvas.height = wrap.clientHeight;
+        const sim = new PhysicsEngine();
+        const state = new StateManager();
+        // Inline three-body triangle preset
+        const mass = 100;
+        const s = 1000 / 1000;
+        const h = s * Math.sqrt(3) / 2;
+        state.addBody('Alpha', mass, vec(0, (2/3) * h, 0), vec(0, 0, 0), '#ff4444');
+        state.addBody('Beta',  mass, vec(-s / 2, -(1/3) * h, 0), vec(0, 0, 0), '#44ff88');
+        state.addBody('Gamma', mass, vec(s / 2, -(1/3) * h, 0), vec(0, 0, 0), '#4488ff');
+        const renderer = new CanvasRenderer(canvas);
+        renderer.zoomToFit(state.bodies);
+        renderer.showCom = true;
+        const G = 60;
+        function animate() {
+          for (let i = 0; i < 4; i++) {
+            sim.integrateLeapfrog(state.bodies, G, 0.005);
+            state.time += 0.005;
+            state.recordState();
+          }
+          const com = sim.computeCenterOfMass(state.bodies);
+          renderer.render(state.bodies, state.history, com, -1, state.time);
+          requestAnimationFrame(animate);
+        }
+        animate();
+      }
+    </script>
+</body>
+</html>

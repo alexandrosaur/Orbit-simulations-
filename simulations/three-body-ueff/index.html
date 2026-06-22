@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Three-Body Effective Potential — Orbital Mechanics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../css/base.css">
+  <link rel="stylesheet" href="../../css/layout.css">
+  <link rel="stylesheet" href="../../css/components.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌌</text></svg>">
+  <style>
+    /* ========== Split Layout ========== */
+    .sim-main {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      gap: 0;
+    }
+
+    .sim-controls {
+      width: 280px;
+      min-width: 160px;
+      max-width: 50vw;
+      flex-shrink: 0;
+      overflow-y: auto;
+      max-height: calc(100vh - 100px);
+      border-right: 1px solid var(--border);
+      padding: 8px;
+    }
+
+    /* ========== Center ========== */
+    .sim-center {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      position: relative;
+    }
+
+    .sim-canvas-wrap {
+      flex: 1;
+      position: relative;
+      cursor: grab;
+      background: var(--bg-primary) url('../../assets/backgrounds/space-bg.jpg') center center / cover no-repeat;
+    }
+    .sim-canvas-wrap:active { cursor: grabbing; }
+    .sim-canvas-wrap canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .sim-data-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 12px;
+      background: rgba(10,10,20,0.95);
+      border-top: 1px solid var(--border);
+      font-size: 0.82rem;
+      overflow-x: auto;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* ========== Right Panel: 3D surface + Bar graph ========== */
+    .sim-right-panel {
+      width: 340px;
+      min-width: 160px;
+      max-width: 45vw;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid var(--border);
+      background: var(--bg-primary);
+    }
+
+    .ueff-3d-wrap {
+      flex: 1;
+      min-height: 180px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      background: #05091a;
+    }
+    .ueff-3d-wrap canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Swap button overlay on 3D canvas */
+    .ueff-swap-btn {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(10,10,20,0.75);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #aabbcc;
+      padding: 4px 8px;
+      font-size: 0.62rem;
+      border-radius: 4px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      z-index: 5;
+    }
+    .ueff-swap-btn:hover {
+      background: rgba(30,40,70,0.9);
+      color: #fff;
+    }
+
+    .ueff-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 8px;
+      background: #0a1122;
+      border-top: 1px solid #1a2a44;
+      border-bottom: 1px solid #1a2a44;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    .ueff-controls label {
+      font-size: 0.55rem;
+      color: #667799;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+    .ueff-controls input[type=range] {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      background: #1a2a44;
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+    .ueff-controls input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #8899ff;
+      border: 2px solid #0a1122;
+      cursor: pointer;
+    }
+    .ueff-controls button {
+      background: #1a2a44;
+      border: 1px solid #2a3a55;
+      color: #aabbcc;
+      padding: 3px 8px;
+      font-size: 0.7rem;
+      border-radius: 3px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .ueff-controls button:hover {
+      background: #2a3a55;
+      color: #ffffff;
+    }
+    .slider-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+    }
+
+    .ueff-info {
+      padding: 6px 8px;
+      border-bottom: 1px solid #1a2a44;
+      background: #0a1122;
+      flex-shrink: 0;
+    }
+    .ueff-info .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 1px 0;
+      font-size: 0.65rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .ueff-info .info-row .label { color: #667799; }
+    .ueff-info .info-row .value { color: #c8d0e0; }
+    .ueff-info .info-row .value.accent { color: #8899ff; }
+    .ueff-info .info-row .value.energy { color: #44ff88; }
+
+    /* Bar graph */
+    .ueff-bar-wrap {
+      flex-shrink: 0;
+      height: 160px;
+      min-height: 80px;
+      background: var(--bg-primary);
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    #ueffBarCanvas {
+      flex: 1;
+      width: 100%;
+      display: block;
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 768px) {
+      .sim-main { flex-direction: column; }
+      .sim-controls {
+        width: 100%;
+        max-width: 100%;
+        max-height: 200px;
+      }
+      .sim-right-panel {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+      }
+    }
+  </style>
+</head>
+<body class="sim-page-body">
+  <header class="sim-header">
+    <a href="info.html" class="back-link">← Info</a>
+    <a href="../../index.html" class="back-link">← Catalog</a>
+    <span class="sim-header-title">Three-Body Effective Potential</span>
+  </header>
+
+  <div class="sim-main">
+    <!-- ===== LEFT: Controls sidebar ===== -->
+    <div class="sim-controls"></div>
+
+    <!-- ===== CENTER: Orbital view + data bar ===== -->
+    <div class="sim-center">
+      <div class="sim-canvas-wrap" id="simCanvasWrap">
+        <canvas id="simCanvas"></canvas>
+        <div id="bodyInfoPanel" style="position:absolute;top:12px;left:12px;background:rgba(10,10,20,0.85);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 18px;font-size:0.9rem;color:var(--text-secondary);display:none;line-height:1.6;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);max-width:500px;z-index:5;"></div>
+      </div>
+      <div class="sim-data-bar">
+        <div class="data-group"><span class="data-label">Time</span><span class="data-value" id="dTime">0.00 s</span></div>
+        <div id="bodyDataContainer" style="display:flex;flex:1 0 0;min-width:0;align-items:center;gap:8px;"></div>
+        <div class="data-group"><span class="data-label">Energy</span><span class="data-value energy" id="dEnergy">0 J</span></div>
+        <div class="data-group"><span class="data-label">Sys U_eff</span><span class="data-value accent" id="dSysUEff">0 J</span></div>
+        <div class="data-group"><span class="data-label">Ang. Mom.</span><span class="data-value accent" id="dAngMom">0</span></div>
+        <div class="data-group"><span class="data-label">Bodies</span><span class="data-value" id="dBodyCount">3</span></div>
+      </div>
+    </div>
+
+    <!-- ===== RIGHT: 3D Surface + Bar graph ===== -->
+    <div class="sim-right-panel" id="simRightPanel">
+      <div class="ueff-3d-wrap">
+        <canvas id="ueffCanvas3D"></canvas>
+        <button class="ueff-swap-btn" id="ueffSwapBtn">↔ Swap</button>
+      </div>
+      <div class="ueff-controls">
+        <div class="slider-group" style="width:60px;">
+          <label>Pitch</label>
+          <input type="range" id="ueffPitchSlider" min="0" max="100" value="44" style="width:100%;">
+        </div>
+        <div class="slider-group" style="flex:1;min-width:80px;">
+          <label>Spin</label>
+          <input type="range" id="ueffSpinSlider" min="0" max="360" value="0" style="width:100%;">
+        </div>
+        <button id="ueffZoomOutBtn" title="Zoom out">−</button>
+        <button id="ueffZoomInBtn" title="Zoom in">+</button>
+        <div class="slider-group" style="width:60px;">
+          <label>Jib</label>
+          <input type="range" id="ueffYawSlider" min="0" max="360" value="180" style="width:100%;">
+        </div>
+      </div>
+      <div class="ueff-info">
+        <div class="info-row"><span class="label">Body</span><span class="value" id="infoBody">—</span></div>
+        <div class="info-row"><span class="label">U<sub>grav</sub></span><span class="value energy" id="infoUgrav">—</span></div>
+        <div class="info-row"><span class="label">U<sub>eff</sub></span><span class="value accent" id="infoUeff">—</span></div>
+        <div class="info-row"><span class="label">r₁</span><span class="value" id="infoR1">—</span></div>
+        <div class="info-row"><span class="label">r₂</span><span class="value" id="infoR2">—</span></div>
+      </div>
+      <div class="ueff-bar-wrap">
+        <canvas id="ueffBarCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>
