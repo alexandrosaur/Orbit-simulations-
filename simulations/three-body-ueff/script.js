@@ -60,6 +60,7 @@ class ThreeBodyUeffSim {
     this._selectedBody = 0;
     this._selectLock = false;
     this._cameraAnim = null;
+    this._isMobile = false;
 
     this._ueffHistory = [];
     this._lastResetTime = 0;
@@ -68,15 +69,45 @@ class ThreeBodyUeffSim {
     this._swapped = false;
 
     window._sim = this;
+    this._detectMobile();
     this._buildSidebar();
     this._initSurface3D();
     this._setup3DControls();
     this._initDefaultState();
     this._setupCanvas();
+    this._setupSidebarToggle();
     this._setupBarCanvas();
     this._resizeBodyCanvases();
     window.addEventListener('resize', () => this._resizeBodyCanvases());
     this._loop();
+  }
+
+  _detectMobile() {
+    this._isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    // Show the mobile Add Body button
+    const addBtn = document.getElementById('mobileAddBtn');
+    if (addBtn && this._isMobile) {
+      addBtn.style.display = 'flex';
+      addBtn.addEventListener('click', () => {
+        const cx = this.renderer.width / 2;
+        const cy = this.renderer.height / 2;
+        const world = this.renderer.screenToWorld(cx, cy);
+        this.addBody(vec(world.x, world.y, 0));
+      });
+    }
+  }
+
+  _setupSidebarToggle() {
+    const toggleBtn = document.getElementById('sidebarToggleBtn');
+    const sidebar = document.querySelector('.sim-controls');
+    if (!toggleBtn || !sidebar) return;
+    let collapsed = false;
+    toggleBtn.addEventListener('click', () => {
+      collapsed = !collapsed;
+      sidebar.classList.toggle('collapsed', collapsed);
+      const arrow = toggleBtn.querySelector('span');
+      toggleBtn.innerHTML = collapsed ? '☰ Controls <span>▶</span>' : '☰ Controls <span>▼</span>';
+    });
   }
 
   _initDefaultState() {
@@ -431,22 +462,29 @@ class ThreeBodyUeffSim {
     c.appendChild(bodyMassSliders(this.state.bodies, (i,v)=>this.setMass(i,v), i=>this.removeBody(i)));
   }
 
+  _hitTestBody(sx, sy) {
+    for (let i = this.state.bodies.length - 1; i >= 0; i--) {
+      const s = this.renderer.worldToScreen(this.state.bodies[i].pos);
+      const dx = sx - s.x, dy = sy - s.y;
+      const rad = Math.max(5, Math.min(30, 4 * Math.pow(this.state.bodies[i].mass, 1/3)));
+      if (dx * dx + dy * dy < Math.pow(Math.max(20, rad + 10), 2)) return i;
+    }
+    return null;
+  }
+
   _setupCanvas() {
     const c = this.renderer.canvas;
     let clickStartX=0, clickStartY=0, clickDown=false, mousedownBody=null;
     this._velDrag = false;
+    this._touchState = { pinchDist: 0, touch1: null, touch2: null, longPressTimer: null, longPressFired: false };
+
+    // ---- MOUSE EVENTS ----
     c.addEventListener('mousedown', e => {
       if (e.button !== 0) return;
       clickDown = true; const r = c.getBoundingClientRect();
       clickStartX = e.clientX - r.left; clickStartY = e.clientY - r.top;
       const mx = e.clientX - r.left, my = e.clientY - r.top;
-      mousedownBody = null;
-      for (let i = this.state.bodies.length-1; i>=0; i--) {
-        const s = this.renderer.worldToScreen(this.state.bodies[i].pos);
-        const dx = mx - s.x, dy = my - s.y;
-        const rad = Math.max(5, Math.min(30, 4*Math.pow(this.state.bodies[i].mass,1/3)));
-        if (dx*dx + dy*dy < Math.pow(Math.max(20,rad+10),2)) { mousedownBody=i; break; }
-      }
+      mousedownBody = this._hitTestBody(mx, my);
       this._panState = { x: mx, y: my }; this._velDrag = false; c.style.cursor='grab';
     });
     c.addEventListener('mousemove', e => {
@@ -456,7 +494,6 @@ class ThreeBodyUeffSim {
         clickDown = false;
         if (mousedownBody===null && this.renderer.hitTestArrow(clickStartX, clickStartY)) { this._velDrag=true; c.style.cursor='crosshair'; this.pause(); return; }
         if (mousedownBody!==null) { this._dragBody=mousedownBody; this.pause(); this._dragStart={mx:clickStartX,my:clickStartY,pos:{...this.state.bodies[mousedownBody].pos}}; c.style.cursor='grabbing'; return; }
-        // Reaching here = plain pan on empty canvas → unlock camera
         this._selectLock = false;
       }
       if (this._velDrag) {
@@ -480,7 +517,6 @@ class ThreeBodyUeffSim {
         clickDown=false;
         const panel = document.getElementById('bodyInfoPanel');
         if (panel && panel.contains(e.target)) return;
-        // Always deselect on canvas click (no extra click needed)
         this._deselectBody();
         if (mousedownBody!==null) this._selectBody(mousedownBody);
       }
@@ -493,6 +529,152 @@ class ThreeBodyUeffSim {
       e.preventDefault(); const r=c.getBoundingClientRect();
       this.addBody(this.renderer.screenToWorld(e.clientX-r.left, e.clientY-r.top));
     });
+
+    // ---- TOUCH EVENTS ----
+    if (this._isMobile) {
+      const ts = this._touchState;
+
+      c.addEventListener('touchstart', e => {
+        e.preventDefault();
+        const touches = e.touches;
+        if (ts.longPressTimer) { clearTimeout(ts.longPressTimer); ts.longPressTimer = null; }
+        ts.longPressFired = false;
+
+        if (touches.length === 1) {
+          const r = c.getBoundingClientRect();
+          const mx = touches[0].clientX - r.left;
+          const my = touches[0].clientY - r.top;
+          ts.touch1 = touches[0].identifier;
+          clickStartX = mx;
+          clickStartY = my;
+          clickDown = true;
+          mousedownBody = this._hitTestBody(mx, my);
+          this._panState = { x: mx, y: my };
+          this._velDrag = false;
+
+          const ctx = { mx, my };
+          ts.longPressTimer = setTimeout(() => {
+            ts.longPressFired = true;
+            clickDown = false;
+            this._panState = null;
+            const world = this.renderer.screenToWorld(ctx.mx, ctx.my);
+            this.addBody(vec(world.x, world.y, 0));
+            if (navigator.vibrate) navigator.vibrate(10);
+          }, 800);
+        } else if (touches.length === 2) {
+          clickDown = false;
+          if (ts.longPressTimer) { clearTimeout(ts.longPressTimer); ts.longPressTimer = null; }
+          const r = c.getBoundingClientRect();
+          const x1 = touches[0].clientX - r.left, y1 = touches[0].clientY - r.top;
+          const x2 = touches[1].clientX - r.left, y2 = touches[1].clientY - r.top;
+          ts.touch1 = touches[0].identifier;
+          ts.touch2 = touches[1].identifier;
+          ts.pinchDist = Math.hypot(x2 - x1, y2 - y1);
+          ts.pinchCenter = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+        }
+      }, { passive: false });
+
+      c.addEventListener('touchmove', e => {
+        e.preventDefault();
+        const touches = e.touches;
+
+        if (touches.length === 2) {
+          const r = c.getBoundingClientRect();
+          const x1 = touches[0].clientX - r.left, y1 = touches[0].clientY - r.top;
+          const x2 = touches[1].clientX - r.left, y2 = touches[1].clientY - r.top;
+          const dist = Math.hypot(x2 - x1, y2 - y1);
+          if (ts.pinchDist > 0 && dist > 10) {
+            this.renderer.zoomAt(dist / ts.pinchDist);
+            ts.pinchDist = dist;
+          }
+          ts.pinchCenter = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+          return;
+        }
+
+        if (touches.length === 1) {
+          const r = c.getBoundingClientRect();
+          const mx = touches[0].clientX - r.left;
+          const my = touches[0].clientY - r.top;
+
+          if (ts.longPressTimer && (Math.abs(mx - clickStartX) > 10 || Math.abs(my - clickStartY) > 10)) {
+            clearTimeout(ts.longPressTimer);
+            ts.longPressTimer = null;
+          }
+
+          if (clickDown && (Math.abs(mx - clickStartX) > 8 || Math.abs(my - clickStartY) > 8)) {
+            clickDown = false;
+            if (ts.longPressTimer) { clearTimeout(ts.longPressTimer); ts.longPressTimer = null; }
+            if (mousedownBody !== null) {
+              this._dragBody = mousedownBody;
+              this.pause();
+              this._dragStart = { mx: clickStartX, my: clickStartY, pos: { ...this.state.bodies[mousedownBody].pos } };
+              return;
+            }
+            this._selectLock = false;
+          }
+
+          if (this._dragBody !== null) {
+            const dWx = (mx - this._dragStart.mx) / this.renderer.zoom;
+            const dWy = -(my - this._dragStart.my) / this.renderer.zoom;
+            this.state.bodies[this._dragBody].pos.x = this._dragStart.pos.x + dWx;
+            this.state.bodies[this._dragBody].pos.y = this._dragStart.pos.y + dWy;
+            this.state.history[this._dragBody] = [{ ...this.state.bodies[this._dragBody].pos }];
+            return;
+          }
+
+          if (this._panState) {
+            this.renderer.pan(mx - this._panState.x, my - this._panState.y);
+            this._panState.x = mx; this._panState.y = my;
+          }
+        }
+      }, { passive: false });
+
+      c.addEventListener('touchend', e => {
+        e.preventDefault();
+        if (ts.longPressTimer) { clearTimeout(ts.longPressTimer); ts.longPressTimer = null; }
+        if (ts.longPressFired) {
+          ts.longPressFired = false;
+          clickDown = false;
+          return;
+        }
+        if (ts.pinchDist > 0) {
+          ts.pinchDist = 0;
+          ts.touch1 = null;
+          ts.touch2 = null;
+          return;
+        }
+        if (clickDown) {
+          clickDown = false;
+          const panel = document.getElementById('bodyInfoPanel');
+          const target = e.target || document.elementFromPoint(
+            (e.changedTouches[0] || {}).clientX,
+            (e.changedTouches[0] || {}).clientY
+          );
+          if (panel && panel.contains(target)) return;
+          this._deselectBody();
+          if (mousedownBody !== null) this._selectBody(mousedownBody);
+        }
+        if (this._dragBody !== null) {
+          this._dragBody = null;
+          this.state.clearHistory();
+        }
+        this._panState = null;
+        mousedownBody = null;
+      }, { passive: false });
+
+      c.addEventListener('touchcancel', () => {
+        if (ts.longPressTimer) { clearTimeout(ts.longPressTimer); ts.longPressTimer = null; }
+        ts.longPressFired = false;
+        clickDown = false;
+        if (this._dragBody !== null) {
+          this._dragBody = null;
+          this.state.clearHistory();
+        }
+        this._panState = null;
+        ts.pinchDist = 0;
+        mousedownBody = null;
+      });
+    }
   }
 
   _calcBodyUEff(index) {

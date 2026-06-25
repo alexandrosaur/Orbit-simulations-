@@ -59,12 +59,51 @@ class NBodySim {
     this._selectedBody = -1;
     this._selectLock = false;
     this._cameraAnim = null;
+    this._isMobile = false;
 
     window._sim = this; // expose for panel button onclick handlers
+    this._detectMobile();
     this._buildSidebar();
     this._initDefaultState();
     this._setupCanvas();
+    this._setupSidebarToggle();
     this._loop();
+  }
+
+  _detectMobile() {
+    this._isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    // Show the mobile Add Body button
+    const addBtn = document.getElementById('mobileAddBtn');
+    if (addBtn && this._isMobile) {
+      addBtn.style.display = 'flex';
+      addBtn.addEventListener('click', () => {
+        // Add body at center of current viewport
+        const cx = this.renderer.width / 2;
+        const cy = this.renderer.height / 2;
+        const world = this.renderer.screenToWorld(cx, cy);
+        this.addBody(vec(world.x, world.y, 0));
+      });
+    }
+  }
+
+  _setupSidebarToggle() {
+    const toggleBtn = document.getElementById('sidebarToggleBtn');
+    const sidebar = document.querySelector('.sim-controls');
+    const arrow = document.getElementById('sidebarToggleArrow');
+    if (!toggleBtn || !sidebar) return;
+    let collapsed = false;
+    toggleBtn.addEventListener('click', () => {
+      collapsed = !collapsed;
+      sidebar.classList.toggle('collapsed', collapsed);
+      if (arrow) {
+        arrow.textContent = collapsed ? '▶' : '▼';
+      }
+      toggleBtn.innerHTML = collapsed ? '☰ Controls <span id="sidebarToggleArrow">▶</span>' : '☰ Controls <span id="sidebarToggleArrow">▼</span>';
+      // Re-acquire arrow reference since innerHTML changed it
+      const newArrow = document.getElementById('sidebarToggleArrow');
+      if (newArrow && collapsed) newArrow.textContent = '▶';
+      else if (newArrow) newArrow.textContent = '▼';
+    });
   }
 
   _initDefaultState() {
@@ -82,7 +121,7 @@ class NBodySim {
     sb.appendChild(GSlider(v => { this.G = v; }));
     sb.appendChild(speedSlider(v => { this.speed = v; }));
     sb.appendChild(softeningSlider(v => { this.softening = v; }));
-    sb.appendChild(infoText('Right-click canvas to add body · × on slider to remove'));
+    sb.appendChild(infoText(this._isMobile ? 'Tap + button to add body · × on slider to remove' : 'Right-click canvas to add body · × on slider to remove'));
     sb.appendChild(trailToggle(v => { this.renderer.showTrails = v; }));
 
     // Masses
@@ -164,8 +203,8 @@ class NBodySim {
 <div style="font-variant-numeric:tabular-nums;">Vel: (<span id="panelVx" contenteditable="true" data-axis="x" style="display:inline-block;min-width:7ch;text-align:right;cursor:text;border-bottom:1px dashed rgba(255,255,255,0.2);" title="Click to edit">${this._fmt(body.vel.x)}</span>, <span id="panelVy" contenteditable="true" data-axis="y" style="display:inline-block;min-width:7ch;text-align:right;cursor:text;border-bottom:1px dashed rgba(255,255,255,0.2);" title="Click to edit">${this._fmt(body.vel.y)}</span>)</div>
 <div>Speed: <span id="panelSpeed" style="font-variant-numeric:tabular-nums;">${this._fmt(mag(body.vel))}</span> km/s</div>
 <div style="margin-top:8px;display:flex;gap:8px;">
-  <button onclick="window._sim._makeStationary()" style="background:var(--accent);color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.75rem;">⏸ Stationary</button>
-  <button onclick="window._sim.removeBody(window._sim._selectedBody);window._sim._deselectBody()" style="background:#ff4444;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.75rem;">✕ Delete</button>
+  <button onclick="window._sim._makeStationary()" style="background:var(--accent);color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.75rem;min-height:32px;">⏸ Stationary</button>
+  <button onclick="window._sim.removeBody(window._sim._selectedBody);window._sim._deselectBody()" style="background:#ff4444;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.75rem;min-height:32px;">✕ Delete</button>
 </div>`;
       // Set up blur handler to commit velocity edits
       const vxEl = document.getElementById('panelVx');
@@ -295,13 +334,29 @@ class NBodySim {
     c.appendChild(bodyMassSliders(this.state.bodies, (i, v) => this.setMass(i, v), i => this.removeBody(i)));
   }
 
+  /** Hit-test a body at screen coordinates, returning its index or null */
+  _hitTestBody(sx, sy) {
+    for (let i = this.state.bodies.length - 1; i >= 0; i--) {
+      const s = this.renderer.worldToScreen(this.state.bodies[i].pos);
+      const dx = sx - s.x, dy = sy - s.y;
+      const rad = Math.max(5, Math.min(30, 4 * Math.pow(this.state.bodies[i].mass, 1 / 3)));
+      if (dx * dx + dy * dy < (Math.max(20, rad + 10)) ** 2) {
+        return i;
+      }
+    }
+    return null;
+  }
+
   _setupCanvas() {
     const c = this.renderer.canvas;
     let clickStartX = 0, clickStartY = 0, clickDown = false;
     let mousedownBody = null;
     this._velDrag = false;
+    // Track touch IDs for multi-touch pinch zoom
+    this._touchState = { pinchDist: 0, touch1: null, touch2: null, longPressTimer: null, longPressFired: false };
 
-    c.addEventListener('mousedown', e => {
+    // ---- MOUSE EVENTS ----
+    const onMouseDown = (e) => {
       if (e.button !== 0) return;
       clickDown = true;
       const r = c.getBoundingClientRect();
@@ -309,23 +364,13 @@ class NBodySim {
       clickStartY = e.clientY - r.top;
       const mx = e.clientX - r.left, my = e.clientY - r.top;
 
-      // Check if we hit a body (for potential drag)
-      mousedownBody = null;
-      for (let i = this.state.bodies.length - 1; i >= 0; i--) {
-        const s = this.renderer.worldToScreen(this.state.bodies[i].pos);
-        const dx = mx - s.x, dy = my - s.y;
-        const rad = Math.max(5, Math.min(30, 4 * Math.pow(this.state.bodies[i].mass, 1 / 3)));
-        if (dx * dx + dy * dy < (Math.max(20, rad + 10)) ** 2) {
-          mousedownBody = i;
-          break;
-        }
-      }
+      mousedownBody = this._hitTestBody(mx, my);
       this._panState = { x: mx, y: my };
       this._velDrag = false;
       c.style.cursor = 'grab';
-    });
+    };
 
-    c.addEventListener('mousemove', e => {
+    const onMouseMove = (e) => {
       const r = c.getBoundingClientRect();
       const mx = e.clientX - r.left, my = e.clientY - r.top;
       // Detect if mouse moved enough to be a drag, not a click
@@ -377,7 +422,7 @@ class NBodySim {
         this.renderer.pan(mx - this._panState.x, my - this._panState.y);
         this._panState.x = mx; this._panState.y = my;
       }
-    });
+    };
 
     const end = (e) => {
       if (this._velDrag) {
@@ -388,7 +433,6 @@ class NBodySim {
       // Check if this was a click (not a drag)
       if (clickDown && e.button === 0) {
         clickDown = false;
-        // Don't deselect if clicking inside the info panel (buttons etc.)
         const panel = document.getElementById('bodyInfoPanel');
         if (panel && panel.contains(e.target)) return;
         if (mousedownBody !== null) {
@@ -406,6 +450,9 @@ class NBodySim {
       c.style.cursor = 'grab';
       mousedownBody = null;
     };
+
+    c.addEventListener('mousedown', onMouseDown);
+    c.addEventListener('mousemove', onMouseMove);
     c.addEventListener('mouseup', end);
     c.addEventListener('mouseleave', end);
     c.addEventListener('wheel', e => {
@@ -419,6 +466,176 @@ class NBodySim {
       const world = this.renderer.screenToWorld(mx, my);
       this.addBody(vec(world.x, world.y, 0));
     });
+
+    // ---- TOUCH EVENTS ----
+    if (this._isMobile) {
+      const ts = this._touchState;
+
+      c.addEventListener('touchstart', e => {
+        e.preventDefault();
+        const touches = e.touches;
+
+        // Clear any pending long-press
+        if (ts.longPressTimer) { clearTimeout(ts.longPressTimer); ts.longPressTimer = null; }
+        ts.longPressFired = false;
+
+        if (touches.length === 1) {
+          // Single finger: start drag/click detection
+          const r = c.getBoundingClientRect();
+          const mx = touches[0].clientX - r.left;
+          const my = touches[0].clientY - r.top;
+          ts.touch1 = touches[0].identifier;
+          clickStartX = mx;
+          clickStartY = my;
+          clickDown = true;
+          mousedownBody = this._hitTestBody(mx, my);
+          this._panState = { x: mx, y: my };
+          this._velDrag = false;
+
+          // Long-press timer (800ms) to add body (replacement for right-click)
+          const ctx = { mx, my };
+          ts.longPressTimer = setTimeout(() => {
+            ts.longPressFired = true;
+            clickDown = false;
+            this._panState = null;
+            const world = this.renderer.screenToWorld(ctx.mx, ctx.my);
+            this.addBody(vec(world.x, world.y, 0));
+            // Brief haptic feedback if available
+            if (navigator.vibrate) navigator.vibrate(10);
+          }, 800);
+
+        } else if (touches.length === 2) {
+          // Two fingers: pinch zoom
+          clickDown = false;
+          if (ts.longPressTimer) { clearTimeout(ts.longPressTimer); ts.longPressTimer = null; }
+          const r = c.getBoundingClientRect();
+          const x1 = touches[0].clientX - r.left, y1 = touches[0].clientY - r.top;
+          const x2 = touches[1].clientX - r.left, y2 = touches[1].clientY - r.top;
+          ts.touch1 = touches[0].identifier;
+          ts.touch2 = touches[1].identifier;
+          ts.pinchDist = Math.hypot(x2 - x1, y2 - y1);
+          ts.pinchCenter = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+        }
+      }, { passive: false });
+
+      c.addEventListener('touchmove', e => {
+        e.preventDefault();
+        const touches = e.touches;
+
+        if (touches.length === 2) {
+          // Pinch zoom
+          const r = c.getBoundingClientRect();
+          const x1 = touches[0].clientX - r.left, y1 = touches[0].clientY - r.top;
+          const x2 = touches[1].clientX - r.left, y2 = touches[1].clientY - r.top;
+          const dist = Math.hypot(x2 - x1, y2 - y1);
+          if (ts.pinchDist > 0 && dist > 10) {
+            const factor = dist / ts.pinchDist;
+            this.renderer.zoomAt(factor);
+            ts.pinchDist = dist;
+          }
+          ts.pinchCenter = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+          return;
+        }
+
+        if (touches.length === 1) {
+          const r = c.getBoundingClientRect();
+          const mx = touches[0].clientX - r.left;
+          const my = touches[0].clientY - r.top;
+
+          // Check for long-press cancellation (moved too much)
+          if (ts.longPressTimer && (Math.abs(mx - clickStartX) > 10 || Math.abs(my - clickStartY) > 10)) {
+            clearTimeout(ts.longPressTimer);
+            ts.longPressTimer = null;
+          }
+
+          // Detect if moved enough to be a drag, not a tap
+          if (clickDown && (Math.abs(mx - clickStartX) > 8 || Math.abs(my - clickStartY) > 8)) {
+            clickDown = false;
+            if (ts.longPressTimer) { clearTimeout(ts.longPressTimer); ts.longPressTimer = null; }
+            // Start position drag if we hit a body
+            if (mousedownBody !== null) {
+              this._dragBody = mousedownBody;
+              this.pause();
+              this._dragStart = { mx: clickStartX, my: clickStartY, pos: { ...this.state.bodies[mousedownBody].pos } };
+              return;
+            }
+            // Plain pan → unlock camera
+            this._selectLock = false;
+          }
+
+          // Handle body position drag
+          if (this._dragBody !== null) {
+            const dWx = (mx - this._dragStart.mx) / this.renderer.zoom;
+            const dWy = -(my - this._dragStart.my) / this.renderer.zoom;
+            this.state.bodies[this._dragBody].pos.x = this._dragStart.pos.x + dWx;
+            this.state.bodies[this._dragBody].pos.y = this._dragStart.pos.y + dWy;
+            this.state.history[this._dragBody] = [{ ...this.state.bodies[this._dragBody].pos }];
+            return;
+          }
+
+          // Pan
+          if (this._panState) {
+            this.renderer.pan(mx - this._panState.x, my - this._panState.y);
+            this._panState.x = mx; this._panState.y = my;
+          }
+        }
+      }, { passive: false });
+
+      c.addEventListener('touchend', e => {
+        e.preventDefault();
+        // Clear long-press timer
+        if (ts.longPressTimer) { clearTimeout(ts.longPressTimer); ts.longPressTimer = null; }
+        if (ts.longPressFired) {
+          ts.longPressFired = false;
+          clickDown = false;
+          return;
+        }
+
+        if (ts.pinchDist > 0) {
+          // Pinch ended
+          ts.pinchDist = 0;
+          ts.touch1 = null;
+          ts.touch2 = null;
+          return;
+        }
+
+        // Check if this was a single tap (not a drag)
+        if (clickDown) {
+          clickDown = false;
+          const panel = document.getElementById('bodyInfoPanel');
+          const target = e.target || document.elementFromPoint(
+            (e.changedTouches[0] || {}).clientX,
+            (e.changedTouches[0] || {}).clientY
+          );
+          if (panel && panel.contains(target)) return;
+          if (mousedownBody !== null) {
+            this._selectBody(mousedownBody);
+          } else {
+            this._deselectBody();
+          }
+        }
+
+        if (this._dragBody !== null) {
+          this._dragBody = null;
+          this.state.clearHistory();
+        }
+        this._panState = null;
+        mousedownBody = null;
+      }, { passive: false });
+
+      c.addEventListener('touchcancel', e => {
+        if (ts.longPressTimer) { clearTimeout(ts.longPressTimer); ts.longPressTimer = null; }
+        ts.longPressFired = false;
+        clickDown = false;
+        if (this._dragBody !== null) {
+          this._dragBody = null;
+          this.state.clearHistory();
+        }
+        this._panState = null;
+        ts.pinchDist = 0;
+        mousedownBody = null;
+      });
+    }
   }
 
   _fmt(v, d = 2) {

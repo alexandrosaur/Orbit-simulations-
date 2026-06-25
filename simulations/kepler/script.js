@@ -35,6 +35,7 @@ class KeplerSim {
 
     this._buildSidebar();
     this._setupCanvas();
+    this._setupSidebarToggle();
     this.reset();
     this._loop();
   }
@@ -45,6 +46,18 @@ class KeplerSim {
       this.ueffCanvas.width = rect.width;
       this.ueffCanvas.height = rect.height;
     }
+  }
+
+  _setupSidebarToggle() {
+    const toggleBtn = document.getElementById('sidebarToggleBtn');
+    const sidebar = document.querySelector('.sim-controls');
+    if (!toggleBtn || !sidebar) return;
+    let collapsed = false;
+    toggleBtn.addEventListener('click', () => {
+      collapsed = !collapsed;
+      sidebar.classList.toggle('collapsed', collapsed);
+      toggleBtn.innerHTML = collapsed ? '☰ Controls <span>▶</span>' : '☰ Controls <span>▼</span>';
+    });
   }
 
   _setupUeffResize() {
@@ -190,6 +203,10 @@ class KeplerSim {
 
   _setupCanvas() {
     const c = this.renderer.canvas;
+    // Touch state for pinch zoom
+    this._touchState = { pinchDist: 0, touch1: null, touch2: null };
+
+    // ---- MOUSE EVENTS ----
     c.addEventListener('mousedown', e => {
       if (e.button !== 0) return;
       if (this._comLockEnabled) {
@@ -215,6 +232,80 @@ class KeplerSim {
       e.preventDefault();
       this.renderer.zoomAt(e.deltaY < 0 ? 1.1 : 1 / 1.1);
     }, { passive: false });
+
+    // ---- TOUCH EVENTS ----
+    if ('ontouchstart' in window) {
+      const ts = this._touchState;
+
+      c.addEventListener('touchstart', e => {
+        e.preventDefault();
+        const touches = e.touches;
+        if (touches.length === 1) {
+          if (this._comLockEnabled) {
+            this._comLockEnabled = false;
+            const toggleEl = document.getElementById('comLockToggle');
+            if (toggleEl) toggleEl.classList.remove('active');
+          }
+          const r = c.getBoundingClientRect();
+          const mx = touches[0].clientX - r.left;
+          const my = touches[0].clientY - r.top;
+          ts.touch1 = touches[0].identifier;
+          this._panState = { x: mx, y: my };
+        } else if (touches.length === 2) {
+          this._panState = null;
+          const r = c.getBoundingClientRect();
+          const x1 = touches[0].clientX - r.left, y1 = touches[0].clientY - r.top;
+          const x2 = touches[1].clientX - r.left, y2 = touches[1].clientY - r.top;
+          ts.touch1 = touches[0].identifier;
+          ts.touch2 = touches[1].identifier;
+          ts.pinchDist = Math.hypot(x2 - x1, y2 - y1);
+          ts.pinchCenter = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+        }
+      }, { passive: false });
+
+      c.addEventListener('touchmove', e => {
+        e.preventDefault();
+        const touches = e.touches;
+        if (touches.length === 2) {
+          const r = c.getBoundingClientRect();
+          const x1 = touches[0].clientX - r.left, y1 = touches[0].clientY - r.top;
+          const x2 = touches[1].clientX - r.left, y2 = touches[1].clientY - r.top;
+          const dist = Math.hypot(x2 - x1, y2 - y1);
+          if (ts.pinchDist > 0 && dist > 10) {
+            const factor = dist / ts.pinchDist;
+            this.renderer.zoomAt(factor);
+            ts.pinchDist = dist;
+          }
+          ts.pinchCenter = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+          return;
+        }
+        if (touches.length === 1 && this._panState) {
+          const r = c.getBoundingClientRect();
+          const mx = touches[0].clientX - r.left;
+          const my = touches[0].clientY - r.top;
+          this.renderer.pan(mx - this._panState.x, my - this._panState.y);
+          this._panState.x = mx; this._panState.y = my;
+        }
+      }, { passive: false });
+
+      c.addEventListener('touchend', e => {
+        if (ts.pinchDist > 0) {
+          ts.pinchDist = 0;
+          ts.touch1 = null;
+          ts.touch2 = null;
+        }
+        if (e.touches.length === 0) {
+          this._panState = null;
+        }
+      });
+
+      c.addEventListener('touchcancel', () => {
+        this._panState = null;
+        ts.pinchDist = 0;
+        ts.touch1 = null;
+        ts.touch2 = null;
+      });
+    }
   }
 
   _btn() {

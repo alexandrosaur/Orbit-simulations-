@@ -362,25 +362,128 @@
 /* ================================================================
    Responsive
    ================================================================ */
-@media (max-width: 600px) {
-  .hero { padding: 40px 16px 20px; }
-  .sim-grid { grid-template-columns: 1fr; }
-  .toolbar { flex-direction: column; }
-  .footer-content { flex-direction: column; text-align: center; }
+@media (max-width: 900px) {
+  .sim-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
 }
 
 @media (max-width: 768px) {
+  .hero { padding: 50px 16px 24px; }
+  .hero-content h1 { font-size: clamp(1.6rem, 6vw, 2.5rem); }
+  .subtitle { font-size: clamp(0.85rem, 2.5vw, 1rem); }
+  .container { padding: 0 12px 40px; }
+  .sim-grid { grid-template-columns: 1fr; gap: 14px; }
+  .toolbar { flex-direction: column; }
+  .footer-content { flex-direction: column; text-align: center; }
+
+  /* Simulation page: stack layout */
+  .sim-page-body { height: 100dvh; }
+  .sim-header { padding: 10px 12px; gap: 10px; flex-wrap: wrap; }
+  .sim-header-title { font-size: 0.9rem; }
+  .back-link { font-size: 0.8rem; padding: 4px 0; }
   .sim-main { flex-direction: column; }
   .sim-controls {
     width: 100%;
-    max-height: 35vh;
+    max-height: 30vh;
     min-width: 0;
     border-right: none;
     border-bottom: 1px solid var(--border);
+    padding: 8px;
+    gap: 8px;
+    flex-shrink: 0;
   }
+  .sim-canvas-wrap { min-height: 200px; }
   .sim-data-bar {
-    height: 80px;
-    gap: 12px;
-    font-size: 0.75rem;
+    height: auto;
+    min-height: 60px;
+    gap: 8px;
+    font-size: 0.7rem;
+    padding: 6px 8px;
+    overflow-x: auto;
+    flex-wrap: wrap;
   }
+  .sim-data-bar .data-group { flex: 0 0 auto; }
+  .sim-data-bar .data-group .data-label { font-size: 0.6rem; }
+  .sim-data-bar .data-group .data-value { font-size: 0.72rem; }
+
+  /* Info page */
+  .info-page { padding: 20px 14px; }
+  .info-page h1 { font-size: 1.5rem; }
+  .info-page h2 { font-size: 1.1rem; }
+  .info-page .info-subtitle { font-size: 0.95rem; }
+  .preview-wrap { height: 160px; margin-bottom: 20px; }
+
+  /* Right panel (kepler / ueff) */
+  .sim-right-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    border-left: none !important;
+    border-top: 1px solid var(--border);
+    max-height: 40vh;
+  }
+  .ueff-3d-wrap { min-height: 150px; }
+  .ueff-bar-wrap { height: 100px; min-height: 60px; }
+  .ueff-controls { padding: 4px 6px; gap: 4px; }
+  .ueff-controls label { font-size: 0.5rem; }
+
+  /* Collapsible sidebar toggle button */
+  .sidebar-toggle-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-family: var(--font);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all var(--transition);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+  .sidebar-toggle-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .sim-controls.collapsed { max-height: 0 !important; overflow: hidden; padding: 0 !important; border: none; }
 }
+
+@media (max-width: 480px) {
+  .hero { padding: 36px 12px 18px; }
+  .hero-content h1 { font-size: 1.4rem; }
+  .subtitle { font-size: 0.8rem; margin-top: 6px; }
+  .container { padding: 0 8px 30px; }
+  .sim-thumb { height: 120px; font-size: 2.2rem; }
+  .sim-body { padding: 14px; }
+  .sim-title { font-size: 1rem; }
+  .sim-desc { font-size: 0.8rem; }
+  .sim-grid { gap: 12px; }
+  .search-bar { padding: 10px 14px; font-size: 0.85rem; }
+  .footer { padding: 20px 12px; margin-top: 24px; }
+  .footer-links { gap: 14px; }
+  .footer-link, .footer-text { font-size: 0.75rem; }
+
+  /* Simulation page */
+  .sim-header { padding: 8px 10px; gap: 6px; }
+  .sim-header-title { font-size: 0.8rem; }
+  .sim-controls { max-height: 25vh; padding: 6px; }
+  .sim-data-bar { gap: 6px; padding: 4px 6px; }
+  .sim-data-bar .data-group .data-label { font-size: 0.55rem; }
+  .sim-data-bar .data-group .data-value { font-size: 0.65rem; }
+  .sim-canvas-wrap { min-height: 180px; }
+
+  /* Info page */
+  .info-page { padding: 16px 10px; }
+  .info-page h1 { font-size: 1.3rem; }
+  .info-page h2 { font-size: 1rem; margin-top: 20px; }
+  .preview-wrap { height: 130px; }
+  .start-btn { padding: 12px 28px; font-size: 1rem; }
+  .start-btn-wrap { margin-top: 24px; }
+}
+
+/* Default hidden, shown via media query */
+.sidebar-toggle-btn { display: none; }
+
+/* Prevent zoom on double-tap in simulation canvases */
+.sim-canvas-wrap { touch-action: manipulation; }
