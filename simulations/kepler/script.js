@@ -8,6 +8,7 @@ import { PhysicsEngine } from '../../js/core/physics-engine.js';
 import { CanvasRenderer } from '../../js/renderer/canvas-renderer.js';
 import { vec, mag, sub, scale, clone } from '../../js/core/math-utils.js';
 import { transport, speedSlider, trailToggle, camera, comLock, keplerMassSlider, muDisplay, referenceFrameToggle, eccentricitySlider, initialPosition, dataBarToggle } from '../../js/ui/controls.js';
+import { injectShortcutLegend } from '../../js/ui/shortcut-legend.js';
 
 class KeplerSim {
   constructor() {
@@ -461,4 +462,10 @@ class KeplerSim {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => { new KeplerSim(); });
+document.addEventListener('DOMContentLoaded', () => {
+  new KeplerSim();
+  injectShortcutLegend([
+    'Scroll — Zoom',
+    'Drag on canvas — Pan',
+  ]);
+});

@@ -10,6 +10,7 @@ import { StateManager } from '../../js/core/state-manager.js';
 import { CanvasRenderer } from '../../js/renderer/canvas-renderer.js';
 import { vec, mag, sub, cross, formatNum } from '../../js/core/math-utils.js';
 import { transport, GSlider, speedSlider, softeningSlider, trailToggle, camera, comLock, bodyMassSliders, bodyDataDisplay, infoText, dataBarToggle } from '../../js/ui/controls.js';
+import { injectShortcutLegend } from '../../js/ui/shortcut-legend.js';
 import { UeffSurface3D } from './ueff-surface-3d.js';
 
 function initThreeBodyPreset(state) {
@@ -84,7 +85,6 @@ class ThreeBodyUeffSim {
 
   _detectMobile() {
     this._isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    // Show the mobile Add Body button
     const addBtn = document.getElementById('mobileAddBtn');
     if (addBtn && this._isMobile) {
       addBtn.style.display = 'flex';
@@ -117,7 +117,6 @@ class ThreeBodyUeffSim {
     this.renderer.zoomToFit(this.state.bodies, 0.85);
     this._ueffHistory = [];
     this._rebuildSurface();
-    // No auto-select — nothing is selected on load
     this._selectedBody = -1;
     this._selectLock = false;
   }
@@ -133,52 +132,71 @@ class ThreeBodyUeffSim {
   }
 
   _setup3DControls() {
+    // Pitch slider — uses public API, not private fields
     const pitchSlider = document.getElementById('ueffPitchSlider');
     if (pitchSlider) pitchSlider.addEventListener('input', () => {
-      if (this._surface3D) this._surface3D._elevation = pitchSlider.value / 100 * Math.PI / 2;
+      if (this._surface3D) this._surface3D.setElevation(pitchSlider.value / 100 * Math.PI / 2);
     });
+    // Spin slider
     const spinSlider = document.getElementById('ueffSpinSlider');
     if (spinSlider) spinSlider.addEventListener('input', () => {
-      if (this._surface3D) this._surface3D._azimuth = spinSlider.value / 180 * Math.PI;
+      if (this._surface3D) this._surface3D.setAzimuth(spinSlider.value / 180 * Math.PI);
     });
+    // Jib slider
     const yawSlider = document.getElementById('ueffYawSlider');
     if (yawSlider) yawSlider.addEventListener('input', () => {
       if (this._surface3D) {
         const rad = (yawSlider.value - 180) / 180 * Math.PI;
-        this._surface3D._jibY = Math.sin(rad) * 12;
-        this._surface3D._panOffset.z = Math.cos(rad) * 4;
+        this._surface3D.setJib(Math.sin(rad) * 12);
+        this._surface3D._renderer._panOffset.z = Math.cos(rad) * 4;
       }
     });
+    // Zoom buttons
     document.getElementById('ueffZoomOutBtn')?.addEventListener('click', () => {
-      if (this._surface3D) this._surface3D._distance = Math.min(50, this._surface3D._distance * 1.2);
+      if (this._surface3D) this._surface3D.setDistance(Math.min(50, this._surface3D.getDistance() * 1.2));
     });
     document.getElementById('ueffZoomInBtn')?.addEventListener('click', () => {
-      if (this._surface3D) this._surface3D._distance = Math.max(3, this._surface3D._distance / 1.2);
+      if (this._surface3D) this._surface3D.setDistance(Math.max(3, this._surface3D.getDistance() / 1.2));
+    });
+    // Reset view button
+    document.getElementById('ueffResetViewBtn')?.addEventListener('click', () => {
+      if (this._surface3D) this._surface3D.resetCamera();
     });
     // Swap button: toggles simulation and 3D canvases between center and right panel
     document.getElementById('ueffSwapBtn')?.addEventListener('click', () => {
       const wrap3D = document.querySelector('.ueff-3d-wrap');
       const simWrap = document.getElementById('simCanvasWrap');
       if (!wrap3D || !simWrap) return;
-      // Get the canvases
       const simCanvas = document.getElementById('simCanvas');
       const canvas3D = document.getElementById('ueffCanvas3D');
       if (!simCanvas || !canvas3D) return;
-      // Toggle swapped state
       this._swapped = !this._swapped;
       if (this._swapped) {
-        // Move 3D canvas to center, sim canvas to right
         simWrap.insertBefore(canvas3D, simWrap.firstChild);
         wrap3D.appendChild(simCanvas);
       } else {
-        // Move sim canvas back to center, 3D back to right
         simWrap.insertBefore(simCanvas, simWrap.firstChild);
         wrap3D.appendChild(canvas3D);
       }
-      // Resize both
       this.renderer._handleResize();
       this._resize3DCanvas();
     });
+  }
+
+  /** Keep 3D camera sliders in sync with mouse-drag orbit state */
+  _sync3DSliders() {
+    if (!this._surface3D) return;
+    const pitchSlider = document.getElementById('ueffPitchSlider');
+    const spinSlider = document.getElementById('ueffSpinSlider');
+    if (pitchSlider) {
+      const elevMin = 0.17, elevMax = 1.4;
+      const toSlider = (e) => Math.round(((e - elevMin) / (elevMax - elevMin)) * 100);
+      pitchSlider.value = toSlider(this._surface3D.getElevation());
+    }
+    if (spinSlider) {
+      const az = ((this._surface3D.getAzimuth() % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+      spinSlider.value = Math.round(az * 180 / Math.PI);
+    }
   }
 
   _resize3DCanvas() {
@@ -816,10 +834,21 @@ class ThreeBodyUeffSim {
       const target=bodies[this._selectedBody];
       const otherA=bodies[(this._selectedBody+1)%bodies.length], otherB=bodies[(this._selectedBody+2)%bodies.length];
       this._updateSurface(mag(sub(target.pos,otherA.pos)), mag(sub(target.pos,otherB.pos)), this._calcBodyPotential(this._selectedBody));
+      this._surface3D.tick();
     }
     this._drawBarGraph();
+    this._sync3DSliders();
     requestAnimationFrame(() => this._loop());
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => { new ThreeBodyUeffSim(); });
+document.addEventListener('DOMContentLoaded', () => {
+  new ThreeBodyUeffSim();
+  injectShortcutLegend([
+    'Right-click 2D canvas — Add body',
+    'Drag on 2D canvas — Reposition a body / pan',
+    'Drag on 3D surface — Orbit camera',
+    'Right-click 3D surface — Pan camera',
+    'Scroll on 3D surface — Zoom',
+  ]);
+});

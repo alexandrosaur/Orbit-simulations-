@@ -8,6 +8,7 @@ import { StateManager } from '../../js/core/state-manager.js';
 import { CanvasRenderer } from '../../js/renderer/canvas-renderer.js';
 import { vec, mag, sub, dot, cross, formatNum } from '../../js/core/math-utils.js';
 import { transport, GSlider, speedSlider, softeningSlider, trailToggle, camera, comLock, bodyMassSliders, bodyDataDisplay, infoText, dataBarToggle } from '../../js/ui/controls.js';
+import { injectShortcutLegend } from '../../js/ui/shortcut-legend.js';
 
 /**
  * Create the default three bodies in an equilateral triangle.
@@ -682,4 +683,11 @@ class NBodySim {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => { new NBodySim(); });
+document.addEventListener('DOMContentLoaded', () => {
+  new NBodySim();
+  injectShortcutLegend([
+    'Right-click canvas — Add body',
+    'Drag a body — Reposition',
+    'Scroll — Zoom',
+  ]);
+});

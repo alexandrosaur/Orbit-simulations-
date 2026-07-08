@@ -319,3 +319,53 @@
 
 .data-panel .data-label { color: var(--text-muted); }
 .data-panel .data-value { color: var(--text-primary); font-weight: 500; }
+
+/* ================================================================
+   Shortcut legend (collapsible keyboard shortcut panel)
+   ================================================================ */
+.shortcut-legend {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(10, 10, 20, 0.7);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  max-width: 360px;
+}
+
+.shortcut-legend summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.68rem;
+  padding: 2px 0;
+}
+
+.shortcut-legend summary:hover {
+  color: var(--accent);
+}
+
+.shortcut-legend ul {
+  list-style: none;
+  padding: 4px 0 0 0;
+  margin: 0;
+}
+
+.shortcut-legend ul li {
+  padding: 1px 0;
+  line-height: 1.5;
+}
+
+.shortcut-legend kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.68rem;
+  color: var(--text-primary);
+}
