@@ -10,6 +10,7 @@ import { StateManager } from '../../js/core/state-manager.js';
 import { CanvasRenderer } from '../../js/renderer/canvas-renderer.js';
 import { vec, mag, sub, cross, formatNum } from '../../js/core/math-utils.js';
 import { transport, GSlider, speedSlider, softeningSlider, trailToggle, camera, comLock, bodyMassSliders, bodyDataDisplay, infoText, dataBarToggle } from '../../js/ui/controls.js';
+import { injectShortcutLegend } from '../../js/ui/shortcut-legend.js';
 import { UeffSurface3D } from './ueff-surface-3d.js';
 
 function initThreeBodyPreset(state) {
@@ -60,6 +61,7 @@ class ThreeBodyUeffSim {
     this._selectedBody = 0;
     this._selectLock = false;
     this._cameraAnim = null;
+    this._isMobile = false;
 
     this._ueffHistory = [];
     this._lastResetTime = 0;
@@ -68,15 +70,44 @@ class ThreeBodyUeffSim {
     this._swapped = false;
 
     window._sim = this;
+    this._detectMobile();
     this._buildSidebar();
     this._initSurface3D();
     this._setup3DControls();
     this._initDefaultState();
     this._setupCanvas();
+    this._setupSidebarToggle();
     this._setupBarCanvas();
     this._resizeBodyCanvases();
     window.addEventListener('resize', () => this._resizeBodyCanvases());
     this._loop();
+  }
+
+  _detectMobile() {
+    this._isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const addBtn = document.getElementById('mobileAddBtn');
+    if (addBtn && this._isMobile) {
+      addBtn.style.display = 'flex';
+      addBtn.addEventListener('click', () => {
+        const cx = this.renderer.width / 2;
+        const cy = this.renderer.height / 2;
+        const world = this.renderer.screenToWorld(cx, cy);
+        this.addBody(vec(world.x, world.y, 0));
+      });
+    }
+  }
+
+  _setupSidebarToggle() {
+    const toggleBtn = document.getElementById('sidebarToggleBtn');
+    const sidebar = document.querySelector('.sim-controls');
+    if (!toggleBtn || !sidebar) return;
+    let collapsed = false;
+    toggleBtn.addEventListener('click', () => {
+      collapsed = !collapsed;
+      sidebar.classList.toggle('collapsed', collapsed);
+      const arrow = toggleBtn.querySelector('span');
+      toggleBtn.innerHTML = collapsed ? '☰ Controls <span>▶</span>' : '☰ Controls <span>▼</span>';
+    });
   }
 
   _initDefaultState() {
@@ -86,7 +117,6 @@ class ThreeBodyUeffSim {
     this.renderer.zoomToFit(this.state.bodies, 0.85);
     this._ueffHistory = [];
     this._rebuildSurface();
-    // No auto-select — nothing is selected on load
     this._selectedBody = -1;
     this._selectLock = false;
   }
@@ -102,52 +132,71 @@ class ThreeBodyUeffSim {
   }
 
   _setup3DControls() {
+    // Pitch slider — uses public API, not private fields
     const pitchSlider = document.getElementById('ueffPitchSlider');
     if (pitchSlider) pitchSlider.addEventListener('input', () => {
-      if (this._surface3D) this._surface3D._elevation = pitchSlider.value / 100 * Math.PI / 2;
+      if (this._surface3D) this._surface3D.setElevation(pitchSlider.value / 100 * Math.PI / 2);
     });
+    // Spin slider
     const spinSlider = document.getElementById('ueffSpinSlider');
     if (spinSlider) spinSlider.addEventListener('input', () => {
-      if (this._surface3D) this._surface3D._azimuth = spinSlider.value / 180 * Math.PI;
+      if (this._surface3D) this._surface3D.setAzimuth(spinSlider.value / 180 * Math.PI);
     });
+    // Jib slider
     const yawSlider = document.getElementById('ueffYawSlider');
     if (yawSlider) yawSlider.addEventListener('input', () => {
       if (this._surface3D) {
         const rad = (yawSlider.value - 180) / 180 * Math.PI;
-        this._surface3D._jibY = Math.sin(rad) * 12;
-        this._surface3D._panOffset.z = Math.cos(rad) * 4;
+        this._surface3D.setJib(Math.sin(rad) * 12);
+        this._surface3D._renderer._panOffset.z = Math.cos(rad) * 4;
       }
     });
+    // Zoom buttons
     document.getElementById('ueffZoomOutBtn')?.addEventListener('click', () => {
-      if (this._surface3D) this._surface3D._distance = Math.min(50, this._surface3D._distance * 1.2);
+      if (this._surface3D) this._surface3D.setDistance(Math.min(50, this._surface3D.getDistance() * 1.2));
     });
     document.getElementById('ueffZoomInBtn')?.addEventListener('click', () => {
-      if (this._surface3D) this._surface3D._distance = Math.max(3, this._surface3D._distance / 1.2);
+      if (this._surface3D) this._surface3D.setDistance(Math.max(3, this._surface3D.getDistance() / 1.2));
+    });
+    // Reset view button
+    document.getElementById('ueffResetViewBtn')?.addEventListener('click', () => {
+      if (this._surface3D) this._surface3D.resetCamera();
     });
     // Swap button: toggles simulation and 3D canvases between center and right panel
     document.getElementById('ueffSwapBtn')?.addEventListener('click', () => {
       const wrap3D = document.querySelector('.ueff-3d-wrap');
       const simWrap = document.getElementById('simCanvasWrap');
       if (!wrap3D || !simWrap) return;
-      // Get the canvases
       const simCanvas = document.getElementById('simCanvas');
       const canvas3D = document.getElementById('ueffCanvas3D');
       if (!simCanvas || !canvas3D) return;
-      // Toggle swapped state
       this._swapped = !this._swapped;
       if (this._swapped) {
-        // Move 3D canvas to center, sim canvas to right
         simWrap.insertBefore(canvas3D, simWrap.firstChild);
         wrap3D.appendChild(simCanvas);
       } else {
-        // Move sim canvas back to center, 3D back to right
         simWrap.insertBefore(simCanvas, simWrap.firstChild);
         wrap3D.appendChild(canvas3D);
       }
-      // Resize both
       this.renderer._handleResize();
       this._resize3DCanvas();
     });
+  }
+
+  /** Keep 3D camera sliders in sync with mouse-drag orbit state */
+  _sync3DSliders() {
+    if (!this._surface3D) return;
+    const pitchSlider = document.getElementById('ueffPitchSlider');
+    const spinSlider = document.getElementById('ueffSpinSlider');
+    if (pitchSlider) {
+      const elevMin = 0.17, elevMax = 1.4;
+      const toSlider = (e) => Math.round(((e - elevMin) / (elevMax - elevMin)) * 100);
+      pitchSlider.value = toSlider(this._surface3D.getElevation());
+    }
+    if (spinSlider) {
+      const az = ((this._surface3D.getAzimuth() % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+      spinSlider.value = Math.round(az * 180 / Math.PI);
+    }
   }
 
   _resize3DCanvas() {
@@ -431,22 +480,29 @@ class ThreeBodyUeffSim {
     c.appendChild(bodyMassSliders(this.state.bodies, (i,v)=>this.setMass(i,v), i=>this.removeBody(i)));
   }
 
+  _hitTestBody(sx, sy) {
+    for (let i = this.state.bodies.length - 1; i >= 0; i--) {
+      const s = this.renderer.worldToScreen(this.state.bodies[i].pos);
+      const dx = sx - s.x, dy = sy - s.y;
+      const rad = Math.max(5, Math.min(30, 4 * Math.pow(this.state.bodies[i].mass, 1/3)));
+      if (dx * dx + dy * dy < Math.pow(Math.max(20, rad + 10), 2)) return i;
+    }
+    return null;
+  }
+
   _setupCanvas() {
     const c = this.renderer.canvas;
     let clickStartX=0, clickStartY=0, clickDown=false, mousedownBody=null;
     this._velDrag = false;
+    this._touchState = { pinchDist: 0, touch1: null, touch2: null, longPressTimer: null, longPressFired: false };
+
+    // ---- MOUSE EVENTS ----
     c.addEventListener('mousedown', e => {
       if (e.button !== 0) return;
       clickDown = true; const r = c.getBoundingClientRect();
       clickStartX = e.clientX - r.left; clickStartY = e.clientY - r.top;
       const mx = e.clientX - r.left, my = e.clientY - r.top;
-      mousedownBody = null;
-      for (let i = this.state.bodies.length-1; i>=0; i--) {
-        const s = this.renderer.worldToScreen(this.state.bodies[i].pos);
-        const dx = mx - s.x, dy = my - s.y;
-        const rad = Math.max(5, Math.min(30, 4*Math.pow(this.state.bodies[i].mass,1/3)));
-        if (dx*dx + dy*dy < Math.pow(Math.max(20,rad+10),2)) { mousedownBody=i; break; }
-      }
+      mousedownBody = this._hitTestBody(mx, my);
       this._panState = { x: mx, y: my }; this._velDrag = false; c.style.cursor='grab';
     });
     c.addEventListener('mousemove', e => {
@@ -456,7 +512,6 @@ class ThreeBodyUeffSim {
         clickDown = false;
         if (mousedownBody===null && this.renderer.hitTestArrow(clickStartX, clickStartY)) { this._velDrag=true; c.style.cursor='crosshair'; this.pause(); return; }
         if (mousedownBody!==null) { this._dragBody=mousedownBody; this.pause(); this._dragStart={mx:clickStartX,my:clickStartY,pos:{...this.state.bodies[mousedownBody].pos}}; c.style.cursor='grabbing'; return; }
-        // Reaching here = plain pan on empty canvas → unlock camera
         this._selectLock = false;
       }
       if (this._velDrag) {
@@ -480,7 +535,6 @@ class ThreeBodyUeffSim {
         clickDown=false;
         const panel = document.getElementById('bodyInfoPanel');
         if (panel && panel.contains(e.target)) return;
-        // Always deselect on canvas click (no extra click needed)
         this._deselectBody();
         if (mousedownBody!==null) this._selectBody(mousedownBody);
       }
@@ -493,6 +547,152 @@ class ThreeBodyUeffSim {
       e.preventDefault(); const r=c.getBoundingClientRect();
       this.addBody(this.renderer.screenToWorld(e.clientX-r.left, e.clientY-r.top));
     });
+
+    // ---- TOUCH EVENTS ----
+    if (this._isMobile) {
+      const ts = this._touchState;
+
+      c.addEventListener('touchstart', e => {
+        e.preventDefault();
+        const touches = e.touches;
+        if (ts.longPressTimer) { clearTimeout(ts.longPressTimer); ts.longPressTimer = null; }
+        ts.longPressFired = false;
+
+        if (touches.length === 1) {
+          const r = c.getBoundingClientRect();
+          const mx = touches[0].clientX - r.left;
+          const my = touches[0].clientY - r.top;
+          ts.touch1 = touches[0].identifier;
+          clickStartX = mx;
+          clickStartY = my;
+          clickDown = true;
+          mousedownBody = this._hitTestBody(mx, my);
+          this._panState = { x: mx, y: my };
+          this._velDrag = false;
+
+          const ctx = { mx, my };
+          ts.longPressTimer = setTimeout(() => {
+            ts.longPressFired = true;
+            clickDown = false;
+            this._panState = null;
+            const world = this.renderer.screenToWorld(ctx.mx, ctx.my);
+            this.addBody(vec(world.x, world.y, 0));
+            if (navigator.vibrate) navigator.vibrate(10);
+          }, 800);
+        } else if (touches.length === 2) {
+          clickDown = false;
+          if (ts.longPressTimer) { clearTimeout(ts.longPressTimer); ts.longPressTimer = null; }
+          const r = c.getBoundingClientRect();
+          const x1 = touches[0].clientX - r.left, y1 = touches[0].clientY - r.top;
+          const x2 = touches[1].clientX - r.left, y2 = touches[1].clientY - r.top;
+          ts.touch1 = touches[0].identifier;
+          ts.touch2 = touches[1].identifier;
+          ts.pinchDist = Math.hypot(x2 - x1, y2 - y1);
+          ts.pinchCenter = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+        }
+      }, { passive: false });
+
+      c.addEventListener('touchmove', e => {
+        e.preventDefault();
+        const touches = e.touches;
+
+        if (touches.length === 2) {
+          const r = c.getBoundingClientRect();
+          const x1 = touches[0].clientX - r.left, y1 = touches[0].clientY - r.top;
+          const x2 = touches[1].clientX - r.left, y2 = touches[1].clientY - r.top;
+          const dist = Math.hypot(x2 - x1, y2 - y1);
+          if (ts.pinchDist > 0 && dist > 10) {
+            this.renderer.zoomAt(dist / ts.pinchDist);
+            ts.pinchDist = dist;
+          }
+          ts.pinchCenter = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+          return;
+        }
+
+        if (touches.length === 1) {
+          const r = c.getBoundingClientRect();
+          const mx = touches[0].clientX - r.left;
+          const my = touches[0].clientY - r.top;
+
+          if (ts.longPressTimer && (Math.abs(mx - clickStartX) > 10 || Math.abs(my - clickStartY) > 10)) {
+            clearTimeout(ts.longPressTimer);
+            ts.longPressTimer = null;
+          }
+
+          if (clickDown && (Math.abs(mx - clickStartX) > 8 || Math.abs(my - clickStartY) > 8)) {
+            clickDown = false;
+            if (ts.longPressTimer) { clearTimeout(ts.longPressTimer); ts.longPressTimer = null; }
+            if (mousedownBody !== null) {
+              this._dragBody = mousedownBody;
+              this.pause();
+              this._dragStart = { mx: clickStartX, my: clickStartY, pos: { ...this.state.bodies[mousedownBody].pos } };
+              return;
+            }
+            this._selectLock = false;
+          }
+
+          if (this._dragBody !== null) {
+            const dWx = (mx - this._dragStart.mx) / this.renderer.zoom;
+            const dWy = -(my - this._dragStart.my) / this.renderer.zoom;
+            this.state.bodies[this._dragBody].pos.x = this._dragStart.pos.x + dWx;
+            this.state.bodies[this._dragBody].pos.y = this._dragStart.pos.y + dWy;
+            this.state.history[this._dragBody] = [{ ...this.state.bodies[this._dragBody].pos }];
+            return;
+          }
+
+          if (this._panState) {
+            this.renderer.pan(mx - this._panState.x, my - this._panState.y);
+            this._panState.x = mx; this._panState.y = my;
+          }
+        }
+      }, { passive: false });
+
+      c.addEventListener('touchend', e => {
+        e.preventDefault();
+        if (ts.longPressTimer) { clearTimeout(ts.longPressTimer); ts.longPressTimer = null; }
+        if (ts.longPressFired) {
+          ts.longPressFired = false;
+          clickDown = false;
+          return;
+        }
+        if (ts.pinchDist > 0) {
+          ts.pinchDist = 0;
+          ts.touch1 = null;
+          ts.touch2 = null;
+          return;
+        }
+        if (clickDown) {
+          clickDown = false;
+          const panel = document.getElementById('bodyInfoPanel');
+          const target = e.target || document.elementFromPoint(
+            (e.changedTouches[0] || {}).clientX,
+            (e.changedTouches[0] || {}).clientY
+          );
+          if (panel && panel.contains(target)) return;
+          this._deselectBody();
+          if (mousedownBody !== null) this._selectBody(mousedownBody);
+        }
+        if (this._dragBody !== null) {
+          this._dragBody = null;
+          this.state.clearHistory();
+        }
+        this._panState = null;
+        mousedownBody = null;
+      }, { passive: false });
+
+      c.addEventListener('touchcancel', () => {
+        if (ts.longPressTimer) { clearTimeout(ts.longPressTimer); ts.longPressTimer = null; }
+        ts.longPressFired = false;
+        clickDown = false;
+        if (this._dragBody !== null) {
+          this._dragBody = null;
+          this.state.clearHistory();
+        }
+        this._panState = null;
+        ts.pinchDist = 0;
+        mousedownBody = null;
+      });
+    }
   }
 
   _calcBodyUEff(index) {
@@ -634,10 +834,21 @@ class ThreeBodyUeffSim {
       const target=bodies[this._selectedBody];
       const otherA=bodies[(this._selectedBody+1)%bodies.length], otherB=bodies[(this._selectedBody+2)%bodies.length];
       this._updateSurface(mag(sub(target.pos,otherA.pos)), mag(sub(target.pos,otherB.pos)), this._calcBodyPotential(this._selectedBody));
+      this._surface3D.tick();
     }
     this._drawBarGraph();
+    this._sync3DSliders();
     requestAnimationFrame(() => this._loop());
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => { new ThreeBodyUeffSim(); });
+document.addEventListener('DOMContentLoaded', () => {
+  new ThreeBodyUeffSim();
+  injectShortcutLegend([
+    'Right-click 2D canvas — Add body',
+    'Drag on 2D canvas — Reposition a body / pan',
+    'Drag on 3D surface — Orbit camera',
+    'Right-click 3D surface — Pan camera',
+    'Scroll on 3D surface — Zoom',
+  ]);
+});

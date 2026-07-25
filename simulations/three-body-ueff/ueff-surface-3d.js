@@ -1,6 +1,27 @@
+/**
+ * ueff-surface-3d.js — 3D U_grav(r₁, r₂) surface + trail for Three-Body Effective Potential
+ *
+ * Uses composition with the shared ThreeRenderer for camera/scene/orbit/resize/context-loss.
+ * Adds Ueff-specific meshes: colour-coded surface, wireframe, gold marker + ring,
+ * trail polyline, and dynamic axis labels/tick marks.
+ *
+ * All Three.js r158, imported from jsdelivr CDN (no build step).
+ */
+
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
+import { ThreeRenderer } from '../../js/renderer/three-renderer.js';
 
 export class UeffSurface3D {
+  /**
+   * @param {HTMLCanvasElement} canvas
+   * @param {Object} [options]
+   * @param {number} [options.RMIN=0.18]
+   * @param {number} [options.RMAX=12]
+   * @param {number} [options.GRID=60]
+   * @param {number} [options.TRAIL_LEN=220]
+   * @param {number} [options.Y_MIN=-3]
+   * @param {number} [options.Y_MAX=6]
+   */
   constructor(canvas, options = {}) {
     this.canvas = canvas;
     this.opts = {
@@ -12,8 +33,16 @@ export class UeffSurface3D {
       Y_MAX:     options.Y_MAX     ?? 6,
     };
 
-    this._initRenderer();
-    this._initScene();
+    // ---- Composition: shared ThreeRenderer ----
+    const pivotY = (this.opts.Y_MIN + this.opts.Y_MAX) / 2;
+    this._renderer = new ThreeRenderer(canvas, {
+      pivotX: 3,
+      pivotY,
+      pivotZ: 3,
+      initialDistance: 23,
+      initialAzimuth: 0.88,
+      initialElevation: 0.69,
+    });
 
     this._G = 60; this._mA = 1; this._mB = 1; this._mC = 1;
     this._nA = 'A'; this._nB = 'B'; this._nC = 'C';
@@ -39,30 +68,14 @@ export class UeffSurface3D {
     this._surfBuiltUMin = -1000;
     this._surfBuiltUMax = -1;
 
-    // Camera
-    this._azimuth = 0.88;
-    this._elevation = 0.69;
-    this._distance = 23;
-    this._jibY = 0;
-    this._panOffset = { x: 0, y: 0, z: 0 };
-
     // Axes tracking
     this._axesLines = [];
     this._axesSprites = [];
-
-    this._pivotX = 3;
-    this._pivotZ = 3;
-    this._pivotY = (this.opts.Y_MIN + this.opts.Y_MAX) / 2;
 
     this._buildSurface();
     this._buildTrail();
     this._buildMarker();
     this._buildAxes();
-    this._setupSliders();
-    this._initOrbitControl();
-
-    this._animHandle = null;
-    this._animate();
   }
 
   // ---- Physics ----
@@ -154,7 +167,42 @@ export class UeffSurface3D {
     };
   }
 
-  // ---- API ----
+  // ---- Public camera API (delegates to shared renderer) ----
+
+  /** @param {number} rad */
+  setAzimuth(rad) { this._renderer.setAzimuth(rad); }
+
+  /** @returns {number} */
+  getAzimuth() { return this._renderer.getAzimuth(); }
+
+  /** @param {number} rad */
+  setElevation(rad) { this._renderer.setElevation(rad); }
+
+  /** @returns {number} */
+  getElevation() { return this._renderer.getElevation(); }
+
+  /** @param {number} d */
+  setDistance(d) { this._renderer.setDistance(d); }
+
+  /** @returns {number} */
+  getDistance() { return this._renderer.getDistance(); }
+
+  /** @param {number} y */
+  setJib(y) { this._renderer.setJib(y); }
+
+  /** @returns {number} */
+  getJib() { return this._renderer.getJib(); }
+
+  /** Reset camera to defaults */
+  resetCamera() { this._renderer.resetCamera(); }
+
+  /**
+   * Public resize entry point — called manually after construction
+   * when layout settles (canvas has zero size until CSS layout completes).
+   */
+  resize() { this._renderer.resize(); }
+
+  // ---- API: called by script.js each frame ----
 
   update({ G, mA, mB, mC, nA, nB, nC, r1, r2, U }) {
     this._G = G; this._mA = mA; this._mB = mB; this._mC = mC;
@@ -188,72 +236,52 @@ export class UeffSurface3D {
     this._resetTrail();
   }
 
-  resize() { this._resize(); }
-
+  /**
+   * Fully dispose all resources: meshes, materials, geometries,
+   * axes sprites, and the underlying ThreeRenderer.
+   */
   dispose() {
-    if (this._animHandle) cancelAnimationFrame(this._animHandle);
-    if (this._renderer) this._renderer.dispose();
-  }
-
-  // ---- Sliders ----
-
-  _setupSliders() {
-    const spinEl = document.getElementById('ueffSpinSlider');
-    if (spinEl) {
-      spinEl.value = Math.round((this._azimuth % (2 * Math.PI)) * 180 / Math.PI);
-      spinEl.addEventListener('input', () => { this._azimuth = parseFloat(spinEl.value) * Math.PI / 180; });
+    // Surface meshes
+    if (this._surfMesh) {
+      this._renderer._scene.remove(this._surfMesh);
+      this._surfMesh.geometry.dispose();
+      this._surfMesh.material.dispose();
+      this._surfMesh = null;
     }
-
-    const pitchEl = document.getElementById('ueffPitchSlider');
-    if (pitchEl) {
-      const elevMin = 0.17, elevMax = 1.4;
-      const toSlider = (e) => Math.round(((e - elevMin) / (elevMax - elevMin)) * 100);
-      const toElev = (v) => elevMin + (v / 100) * (elevMax - elevMin);
-      pitchEl.value = toSlider(this._elevation);
-      pitchEl.addEventListener('input', () => { this._elevation = toElev(parseFloat(pitchEl.value)); });
+    if (this._wireMesh) {
+      this._renderer._scene.remove(this._wireMesh);
+      this._wireMesh.geometry.dispose();
+      this._wireMesh.material.dispose();
+      this._wireMesh = null;
     }
-
-    const jibEl = document.getElementById('ueffYawSlider');
-    if (jibEl) {
-      const jibRange = (this.opts.Y_MAX - this.opts.Y_MIN) * 2;
-      const toSlider = (j) => Math.round((j / jibRange + 0.5) * 360);
-      const toJib = (v) => (v / 360 - 0.5) * jibRange;
-      jibEl.value = toSlider(this._jibY);
-      jibEl.addEventListener('input', () => { this._jibY = toJib(parseFloat(jibEl.value)); });
+    // Marker + ring
+    if (this._marker) {
+      this._renderer._scene.remove(this._marker);
+      this._marker.geometry.dispose();
+      this._marker.material.dispose();
+      this._marker = null;
     }
-
-    const zi = document.getElementById('ueffZoomInBtn');
-    const zo = document.getElementById('ueffZoomOutBtn');
-    if (zi) zi.addEventListener('click', () => { this._distance = Math.max(3, this._distance - 1.5); });
-    if (zo) zo.addEventListener('click', () => { this._distance = Math.min(60, this._distance + 1.5); });
-  }
-
-  // ---- Three.js ----
-
-  _initRenderer() {
-    this._renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, alpha: false });
-    this._renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this._renderer.setClearColor(0x05091a, 1);
-    this._camera = new THREE.PerspectiveCamera(55, 1, 0.1, 1000);
-    this._camera.position.set(14, 11, 14);
-    this._camera.lookAt(3, this._pivotY, 3);
-    this._resize();
-    window.addEventListener('resize', () => this._resize());
-  }
-
-  _resize() {
-    const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
-    if (w === 0 || h === 0) return;
-    this._renderer.setSize(w, h, false);
-    this._camera.aspect = w / h;
-    this._camera.updateProjectionMatrix();
-  }
-
-  _initScene() {
-    this._scene = new THREE.Scene();
-    this._scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-    const dir = new THREE.DirectionalLight(0xc8d8ff, 0.9); dir.position.set(8, 16, 8); this._scene.add(dir);
-    const fill = new THREE.DirectionalLight(0xff9955, 0.25); fill.position.set(-6, -4, -6); this._scene.add(fill);
+    if (this._ring) {
+      this._renderer._scene.remove(this._ring);
+      this._ring.geometry.dispose();
+      this._ring.material.dispose();
+      this._ring = null;
+    }
+    // Trail
+    if (this._trailLine) {
+      this._renderer._scene.remove(this._trailLine);
+      this._trailGeo.dispose();
+      this._trailLine.material.dispose();
+      this._trailLine = null;
+      this._trailGeo = null;
+    }
+    // Axes
+    this._clearAxes();
+    // Renderer (cancels animation, removes resize/context/controls listeners)
+    if (this._renderer) {
+      this._renderer.destroy();
+      this._renderer = null;
+    }
   }
 
   // ---- Surface ----
@@ -281,8 +309,10 @@ export class UeffSurface3D {
 
   _buildSurface() {
     if (this._surfMesh) {
-      this._scene.remove(this._surfMesh); this._scene.remove(this._wireMesh);
-      this._surfMesh.geometry.dispose(); this._wireMesh.geometry.dispose();
+      this._renderer._scene.remove(this._surfMesh);
+      this._renderer._scene.remove(this._wireMesh);
+      this._surfMesh.geometry.dispose();
+      this._wireMesh.geometry.dispose();
     }
     this._computeGridRange();
     // If no rolling window data yet, initialize from grid
@@ -298,10 +328,24 @@ export class UeffSurface3D {
     this._clearAxes();
     this._buildAxes();
 
-    const geo = this._makeSurfaceGeo(), geoW = this._makeSurfaceGeo();
-    this._surfMesh = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({ vertexColors: true, side: THREE.DoubleSide, shininess: 38, specular: new THREE.Color(0.18, 0.22, 0.38), transparent: true, opacity: 0.88 }));
-    this._wireMesh = new THREE.Mesh(geoW, new THREE.MeshBasicMaterial({ vertexColors: true, wireframe: true, transparent: true, opacity: 0.09 }));
-    this._scene.add(this._surfMesh); this._scene.add(this._wireMesh);
+    const geo = this._makeSurfaceGeo();
+    const geoW = this._makeSurfaceGeo();
+    this._surfMesh = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({
+      vertexColors: true,
+      side: THREE.DoubleSide,
+      shininess: 38,
+      specular: new THREE.Color(0.18, 0.22, 0.38),
+      transparent: true,
+      opacity: 0.88,
+    }));
+    this._wireMesh = new THREE.Mesh(geoW, new THREE.MeshBasicMaterial({
+      vertexColors: true,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.09,
+    }));
+    this._renderer._scene.add(this._surfMesh);
+    this._renderer._scene.add(this._wireMesh);
   }
 
   _makeSurfaceGeo() {
@@ -333,10 +377,26 @@ export class UeffSurface3D {
   // ---- Marker + trail ----
 
   _buildMarker() {
-    this._marker = new THREE.Mesh(new THREE.SphereGeometry(0.22, 20, 20), new THREE.MeshPhongMaterial({ color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 0.7, shininess: 80 }));
-    this._scene.add(this._marker);
-    this._ring = new THREE.Mesh(new THREE.RingGeometry(0.28, 0.46, 28), new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.38, side: THREE.DoubleSide }));
-    this._scene.add(this._ring);
+    this._marker = new THREE.Mesh(
+      new THREE.SphereGeometry(0.22, 20, 20),
+      new THREE.MeshPhongMaterial({
+        color: 0xffd700,
+        emissive: 0xffaa00,
+        emissiveIntensity: 0.7,
+        shininess: 80,
+      })
+    );
+    this._renderer._scene.add(this._marker);
+    this._ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.28, 0.46, 28),
+      new THREE.MeshBasicMaterial({
+        color: 0xffd700,
+        transparent: true,
+        opacity: 0.38,
+        side: THREE.DoubleSide,
+      })
+    );
+    this._renderer._scene.add(this._ring);
   }
 
   _updateMarker() {
@@ -348,17 +408,22 @@ export class UeffSurface3D {
     }
     this._marker.position.set(p.x, p.y, p.z);
     this._ring.position.copy(this._marker.position);
-    this._ring.lookAt(this._camera.position);
+    this._ring.lookAt(this._renderer._camera.position);
     this._ring.material.opacity = 0.3 + 0.15 * Math.sin(Date.now() * 0.004);
     return p;
   }
+
+  // ---- Slot-based circular trail ----
 
   _buildTrail() {
     const y0 = (this.opts.Y_MIN + this.opts.Y_MAX) / 2;
     this._trailPts = Array.from({ length: this.opts.TRAIL_LEN }, () => new THREE.Vector3(3, y0, 3));
     this._trailGeo = new THREE.BufferGeometry().setFromPoints(this._trailPts);
-    this._trailLine = new THREE.Line(this._trailGeo, new THREE.LineBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.45 }));
-    this._scene.add(this._trailLine);
+    this._trailLine = new THREE.Line(
+      this._trailGeo,
+      new THREE.LineBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.45 })
+    );
+    this._renderer._scene.add(this._trailLine);
   }
 
   _resetTrail() {
@@ -372,19 +437,22 @@ export class UeffSurface3D {
     this._trailPts[this._trailHead % this.opts.TRAIL_LEN].set(mp.x, mp.y, mp.z);
     this._trailHead++;
     const ordered = [];
-    for (let i = 0; i < this.opts.TRAIL_LEN; i++) ordered.push(this._trailPts[(this._trailHead + i) % this.opts.TRAIL_LEN].clone());
+    for (let i = 0; i < this.opts.TRAIL_LEN; i++) {
+      ordered.push(this._trailPts[(this._trailHead + i) % this.opts.TRAIL_LEN].clone());
+    }
     this._trailGeo.setFromPoints(ordered);
   }
 
   // ---- Axes ----
 
   _clearAxes() {
+    const scene = this._renderer._scene;
     for (const obj of this._axesLines) {
-      this._scene.remove(obj);
+      scene.remove(obj);
       if (obj.geometry) obj.geometry.dispose();
     }
     for (const sp of this._axesSprites) {
-      this._scene.remove(sp);
+      scene.remove(sp);
       if (sp.material && sp.material.map) sp.material.map.dispose();
       if (sp.material) sp.material.dispose();
     }
@@ -404,7 +472,7 @@ export class UeffSurface3D {
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
     sp.position.set(...position);
     sp.scale.set(2.8, 0.85, 1);
-    this._scene.add(sp);
+    this._renderer._scene.add(sp);
     this._axesSprites.push(sp);
   }
 
@@ -422,7 +490,7 @@ export class UeffSurface3D {
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
     sp.position.set(...position);
     sp.scale.set(cv.width / cv.height * 0.75, 0.75, 1);
-    this._scene.add(sp);
+    this._renderer._scene.add(sp);
     this._axesSprites.push(sp);
   }
 
@@ -434,14 +502,14 @@ export class UeffSurface3D {
     else { from = [-0.12, pos, -0.12]; to = [-0.04, pos, -0.12]; }
     const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...from), new THREE.Vector3(...to)]);
     const obj = new THREE.Line(g, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.5, depthTest: true }));
-    this._scene.add(obj);
+    this._renderer._scene.add(obj);
     this._axesLines.push(obj);
   }
 
   _addAxisLine(from, to, color) {
     const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...from), new THREE.Vector3(...to)]);
     const obj = new THREE.Line(g, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.6, depthTest: true }));
-    this._scene.add(obj);
+    this._renderer._scene.add(obj);
     this._axesLines.push(obj);
   }
 
@@ -486,92 +554,16 @@ export class UeffSurface3D {
     }
   }
 
-  // ---- Mouse Orbit + Pan ----
+  // ---- Frame advance (called by the shared renderer's animation loop) ----
 
-  _initOrbitControl() {
-    let orbDragging = false;
-    let panDragging = false;
-    let lastX = 0;
-    let lastY = 0;
-
-    const onDown = (x, y, button) => {
-      if (button === 2) {
-        panDragging = true;
-      } else {
-        orbDragging = true;
-      }
-      lastX = x;
-      lastY = y;
-      this.canvas.style.cursor = 'grabbing';
-    };
-
-    const onMove = (x, y) => {
-      const dx = x - lastX;
-      const dy = y - lastY;
-      lastX = x;
-      lastY = y;
-
-      if (orbDragging) {
-        this._azimuth -= dx * 0.008;
-        this._elevation = Math.max(0.08, Math.min(1.5, this._elevation + dy * 0.008));
-        // Sync sliders
-        const spinEl = document.getElementById('ueffSpinSlider');
-        if (spinEl) spinEl.value = Math.round(((this._azimuth % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) * 180 / Math.PI);
-        const pitchEl = document.getElementById('ueffPitchSlider');
-        if (pitchEl) {
-          const elevMin = 0.17, elevMax = 1.4;
-          const toSlider = (e) => Math.round(((e - elevMin) / (elevMax - elevMin)) * 100);
-          pitchEl.value = toSlider(this._elevation);
-        }
-      } else if (panDragging) {
-        // Pan in camera-local space: screen-right and screen-up vectors
-        const dir = new THREE.Vector3();
-        this._camera.getWorldDirection(dir);
-        const right = new THREE.Vector3().crossVectors(dir, this._camera.up).normalize();
-        const screenUp = new THREE.Vector3().crossVectors(right, dir).normalize();
-        // Scale by distance so pan speed feels consistent at any zoom
-        const scale = this._distance * 0.002;
-        this._panOffset.x += (-dx * right.x + dy * screenUp.x) * scale;
-        this._panOffset.y += (-dx * right.y + dy * screenUp.y) * scale;
-        this._panOffset.z += (-dx * right.z + dy * screenUp.z) * scale;
-      }
-    };
-
-    const onUp = () => {
-      orbDragging = false;
-      panDragging = false;
-      this.canvas.style.cursor = '';
-    };
-
-    this.canvas.addEventListener('mousedown', e => onDown(e.clientX, e.clientY, e.button));
-    window.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
-    window.addEventListener('mouseup', onUp);
-    this.canvas.addEventListener('contextmenu', e => e.preventDefault());
-  }
-
-  // ---- Camera ----
-
-  _updateCamera() {
-    const pivotY = this._pivotY + this._jibY;
-    const pX = this._pivotX + this._panOffset.x;
-    const pZ = this._pivotZ + this._panOffset.z;
-    this._camera.position.set(
-      pX + this._distance * Math.cos(this._elevation) * Math.sin(this._azimuth),
-      pivotY + this._distance * Math.sin(this._elevation),
-      pZ + this._distance * Math.cos(this._elevation) * Math.cos(this._azimuth),
-    );
-    this._camera.lookAt(pX, pivotY, pZ);
-  }
-
-  // ---- Loop ----
-
-  _animate() {
-    this._animHandle = requestAnimationFrame(() => this._animate());
-    this._resize();
-    this._updateCamera();
+  /**
+   * Called by the owning simulation each frame after update().
+   * Advances the marker + trail and increments the internal frame counter.
+   */
+  tick() {
     const mp = this._updateMarker();
     if (this._frame % 2 === 0) this._updateTrail(mp);
     this._frame++;
-    this._renderer.render(this._scene, this._camera);
+    // No need to call renderer.render() — the shared renderer's animation loop handles that.
   }
 }

@@ -18,9 +18,18 @@
   transition: all var(--transition);
   text-decoration: none;
   display: inline-block;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .launch-btn:hover {
+  background: var(--accent);
+  color: var(--bg-primary);
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+}
+
+.launch-btn:active {
   background: var(--accent);
   color: var(--bg-primary);
   box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
@@ -39,9 +48,18 @@
   cursor: pointer;
   text-decoration: none;
   transition: all var(--transition);
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .start-btn:hover {
+  box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
+  transform: scale(1.03);
+}
+
+.start-btn:active {
   box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
   transform: scale(1.03);
 }
@@ -71,9 +89,18 @@
   flex: 1;
   min-width: 60px;
   text-align: center;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sim-btn:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+
+.sim-btn:active {
   background: var(--accent-dim);
   border-color: var(--accent);
 }
@@ -90,7 +117,19 @@
   color: #ff4444;
 }
 
+.sim-btn.danger:active {
+  background: rgba(255, 68, 68, 0.15);
+  border-color: #ff4444;
+  color: #ff4444;
+}
+
 .sim-btn.warn:hover {
+  background: rgba(255, 107, 53, 0.15);
+  border-color: var(--secondary);
+  color: var(--secondary);
+}
+
+.sim-btn.warn:active {
   background: rgba(255, 107, 53, 0.15);
   border-color: var(--secondary);
   color: var(--secondary);
@@ -113,8 +152,8 @@
 .control-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--accent);
   cursor: pointer;
@@ -122,8 +161,8 @@
 }
 
 .control-slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--accent);
   cursor: pointer;
@@ -175,6 +214,49 @@
   letter-spacing: 0.05em;
   color: var(--text-muted);
   margin-bottom: 4px;
+}
+
+/* ================================================================
+   Mobile-specific enhancements
+   ================================================================ */
+@media (max-width: 768px) {
+  .sim-btn {
+    padding: 10px 12px;
+    font-size: 0.8rem;
+    min-height: 44px;
+  }
+  .btn-group { gap: 6px; }
+  .control-slider { height: 6px; }
+  .control-slider::-webkit-slider-thumb {
+    width: 24px;
+    height: 24px;
+  }
+  .control-slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+  }
+  .sim-controls h3 { font-size: 0.78rem; }
+  .control-label { font-size: 0.75rem; }
+  .param-input { font-size: 0.75rem; min-height: 36px; }
+  .sim-controls { gap: 6px; }
+  .control-group { padding-bottom: 8px; }
+}
+
+@media (max-width: 480px) {
+  .sim-btn {
+    padding: 10px 8px;
+    font-size: 0.75rem;
+    min-height: 44px;
+  }
+  .btn-group { gap: 4px; }
+  .control-slider::-webkit-slider-thumb {
+    width: 28px;
+    height: 28px;
+  }
+  .control-slider::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+  }
 }
 
 .control-group {
@@ -237,3 +319,53 @@
 
 .data-panel .data-label { color: var(--text-muted); }
 .data-panel .data-value { color: var(--text-primary); font-weight: 500; }
+
+/* ================================================================
+   Shortcut legend (collapsible keyboard shortcut panel)
+   ================================================================ */
+.shortcut-legend {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(10, 10, 20, 0.7);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  max-width: 360px;
+}
+
+.shortcut-legend summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.68rem;
+  padding: 2px 0;
+}
+
+.shortcut-legend summary:hover {
+  color: var(--accent);
+}
+
+.shortcut-legend ul {
+  list-style: none;
+  padding: 4px 0 0 0;
+  margin: 0;
+}
+
+.shortcut-legend ul li {
+  padding: 1px 0;
+  line-height: 1.5;
+}
+
+.shortcut-legend kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.68rem;
+  color: var(--text-primary);
+}

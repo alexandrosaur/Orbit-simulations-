@@ -31,7 +31,7 @@ function renderCards(sims) {
   }
 
   grid.innerHTML = sims.map(sim => {
-    const emojiMap = { 'three-body': '⭐', 'three-body-ueff': '🌌', 'kepler': '🌍' };
+    const emojiMap = { 'two-body': '⭐', 'three-body-ueff': '🌌', 'kepler': '🌍' };
     const emoji = emojiMap[sim.id] || '🚀';
     return `
       <div class="sim-card">

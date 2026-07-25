@@ -62,11 +62,15 @@
     </header>
 
   <div class="sim-main">
-    <div class="sim-controls"></div>
+    <button class="sidebar-toggle-btn" id="sidebarToggleBtn" title="Toggle sidebar">☰ Controls <span id="sidebarToggleArrow">▼</span></button>
+    <div class="sim-controls">
+      <div id="shortcutLegend"></div>
+    </div>
     <div class="sim-center">
       <div class="sim-canvas-wrap">
         <canvas id="simCanvas"></canvas>
-        <div id="bodyInfoPanel" style="position:absolute;top:12px;right:12px;background:rgba(10,10,20,0.85);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 18px;font-size:0.9rem;color:var(--text-secondary);display:none;line-height:1.6;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);max-width:500px;z-index:5;"></div>
+        <button id="mobileAddBtn" style="display:none;position:absolute;bottom:12px;right:12px;background:rgba(10,10,20,0.85);border:1px solid var(--accent);border-radius:50%;width:44px;height:44px;font-size:1.4rem;color:var(--accent);cursor:pointer;z-index:5;align-items:center;justify-content:center;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);" title="Add body">+</button>
+        <div id="bodyInfoPanel" style="position:absolute;top:12px;right:12px;background:rgba(10,10,20,0.85);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 18px;font-size:0.9rem;color:var(--text-secondary);display:none;line-height:1.6;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);max-width:min(500px,calc(100vw - 24px));z-index:5;"></div>
       </div>
       <div class="sim-data-bar">
         <div class="data-group"><span class="data-label">Time</span><span class="data-value" id="dTime">0.00 s</span></div>
